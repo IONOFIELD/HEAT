@@ -1,5 +1,5 @@
 "use strict";
-const APP_V="20261010053153";
+const APP_V="20261010053311";
 /* Self-update: GitHub Pages caches the page for ~10 min; if a newer build is live, reload into it once. */
 (async()=>{ try{ const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"}); const j=await r.json(); if(j.v && j.v!==APP_V && sessionStorage.getItem("henrys.upd")!==j.v){ sessionStorage.setItem("henrys.upd",j.v); location.replace(location.pathname+"?u="+j.v); } }catch{} })();
 /* =========================================================================
@@ -139,6 +139,7 @@ function zoneSummary(zid, cat){
 const ui = lsGet("henrys.ui") || {};
 let view = "map", cat = ui.cat || "all", query="", pageQuery="";
 let sheet = null; // {type, id?, data?}
+let selectMode=false, selected=new Set();
 let draft = {}, pendingSheet=false, me=null, ghosts=[];
 const remember = () => lsSet("henrys.ui",{view,cat,camera: map ? {c:map.getCenter(), z:map.getZoom()} : ui.camera});
 
