@@ -64,7 +64,9 @@
     // galaxy particles
     const arms=2+Math.floor(R()*3), twist=rnd(3.6,5.4), GAL=[...Array(1500)].map((_,i)=>{ const arm=i%arms, r=Math.pow(R(),.6), a=arm*TAU/arms+r*twist+(R()-.5)*(.9-r*.5), rr=r+(R()-.5)*.06;
       const core=r<.16; return {x:Math.cos(a)*rr, y:Math.sin(a)*rr*.62, s:rnd(.5,1.7)*(core?1.3:1), c: core?`hsla(45,100%,${82+R()*14}%,.95)`:`hsla(${(hue0+r*140+arm*35)%360},${70+R()*25}%,${66+R()*22}%,${.55+R()*.4})`}; });
-    const SKY=[...Array(22)].map((_,i)=>({x:2580+i*52+rnd(-8,8), w:rnd(40,70), h:rnd(140,430), lit:[...Array(14)].map(()=>[R(),R()])}));
+    const SKY=[...Array(22)].map((_,i)=>({x:2580+i*52+rnd(-8,8), w:rnd(40,70), h:rnd(140,430), lit:[...Array(14)].map(()=>[R(),R()])})),
+      HOODS=[...Array(19)].map((_,i)=>({x:1745+i*44+rnd(-5,5), w:rnd(34,52), h:i<2?rnd(150,175):rnd(55,165), lit:[...Array(6)].map(()=>[R(),R()])})),
+      SOMA=[[3255,70,230],[3330,60,190],[3395,74,250],[3462,58,200]];
     const bridgeHue=rnd(8,18), towerLights=R()<.5;
     const FIELD=[...Array(140)].map(()=>({x:R(),y:R(),s:rnd(.4,1.4),p:rnd(0,TAU)}));
 
@@ -89,15 +91,18 @@
       { ctx.fillStyle="#ff5a5a"; [o+520,o+1420].forEach(x=>{ ctx.beginPath(); ctx.arc(x,-566,6,0,TAU); ctx.fill(); }); }
       // SF: Sutro Tower on its hill, then downtown
       bump(o+1560,o+2760,340,0,sil2);                          // the Presidio and the hills: the Golden Gate lands here
-      ctx.fillStyle=sil2; ctx.fillRect(o+2500,-36,1400,36);      // the city's ground, running to the Bay Bridge
+      ctx.fillStyle=sil2; ctx.fillRect(o+1760,-36,2140,36);      // the city's ground, from the Golden Gate to the Bay Bridge
       ctx.strokeStyle=sil; ctx.lineWidth=7; const sx=o+2210;
       ctx.beginPath(); ctx.moveTo(sx-34,-250); ctx.lineTo(sx-6,-640); ctx.moveTo(sx+34,-250); ctx.lineTo(sx+6,-640); ctx.moveTo(sx,-250); ctx.lineTo(sx,-640); ctx.stroke();
       ctx.lineWidth=4; [-430,-560].forEach(y=>{ ctx.beginPath(); ctx.moveTo(sx-26,y); ctx.lineTo(sx+26,y); ctx.stroke(); });
       ctx.fillStyle="#ff4d4d"; [-660,-640].forEach((y,i)=>{ ctx.beginPath(); ctx.arc(sx+(i?-6:6),y,5,0,TAU); ctx.fill(); });
-      SKY.forEach(b=>{ ctx.fillStyle=sil; ctx.fillRect(o+b.x,-b.h,b.w,b.h); ctx.fillStyle=win; b.lit.forEach(([u,v])=>ctx.fillRect(o+b.x+4+u*(b.w-12),-b.h+8+v*(b.h-16),5,7)); });
-      ctx.fillStyle=sil; ctx.beginPath(); ctx.moveTo(o+2960,0); ctx.lineTo(o+3010,-540); ctx.lineTo(o+3060,0); ctx.fill(); ctx.fillRect(o+3007,-600,6,70);   // Transamerica
-      ctx.fillStyle="hsl(255,30%,19%)"; ctx.beginPath(); ctx.moveTo(o+3300,0); ctx.lineTo(o+3300,-640); ctx.quadraticCurveTo(o+3355,-740,o+3410,-640); ctx.lineTo(o+3410,0); ctx.fill();  // Salesforce
+      ctx.fillStyle="hsl(255,30%,19%)"; ctx.beginPath(); ctx.moveTo(o+3300,0); ctx.lineTo(o+3300,-640); ctx.quadraticCurveTo(o+3355,-740,o+3410,-640); ctx.lineTo(o+3410,0); ctx.fill();  // Salesforce, behind the rest
       ctx.fillStyle=`hsla(${(hue0+t/40)%360},90%,70%,.75)`; ctx.fillRect(o+3304,-690,102,22);   // its light crown
+      const blk=b=>{ ctx.fillStyle=sil; ctx.fillRect(o+b.x,-b.h,b.w,b.h); ctx.fillStyle=win; b.lit.forEach(([u,v])=>ctx.fillRect(o+b.x+4+u*(b.w-12),-b.h+8+v*(b.h-16),5,7)); };
+      HOODS.forEach(blk);                                        // the Marina and Pacific Heights, where the bridge comes in
+      SKY.forEach(blk);
+      SOMA.forEach(([x,w,h],k)=>blk({x,w,h,lit:SKY[k].lit}));
+      ctx.fillStyle=sil; ctx.beginPath(); ctx.moveTo(o+2960,0); ctx.lineTo(o+3010,-540); ctx.lineTo(o+3060,0); ctx.fill(); ctx.fillRect(o+3007,-600,6,70);   // Transamerica
       // Bay Bridge
       ctx.strokeStyle=sil; ctx.fillStyle=sil;
       // west end lands in the city: the deck runs out of SoMa onto the Rincon Hill anchorage
@@ -270,6 +275,10 @@
       main.globalAlpha=1; ctx=main;
       if(!still) raf=requestAnimationFrame(frame);
     }
+    const DEMO_LV={"San Francisco":"g","San Mateo":"g","Santa Cruz":"g","Alameda":"y","Sonoma":"y","Marin":"y","Contra Costa":"r","Solano":"r","Santa Clara":"n","Napa":"n","Lake":"n"};
+    const DEMO_COL={g:"#2f9e63",y:"#c9a227",r:"#c2415b",n:"#6b6590"}, DEMO_DOT={g:"#4ade80",y:"#facc15",r:"#fb7185",n:"#d6d1ee"};
+    function inRing(lo,la,ring){ let c=false; for(let i=0,j=ring.length-1;i<ring.length;j=i++){ const [xi,yi]=ring[i],[xj,yj]=ring[j]; if(((yi>la)!==(yj>la)) && lo<(xj-xi)*(la-yi)/(yj-yi)+xi) c=!c; } return c; }
+    const ZN=new Map(); function zoneName(lo,la){ const k=lo+","+la; if(ZN.has(k)) return ZN.get(k); let n=null; (window.ZONES?.features||[]).some(f=>{ const P=f.geometry.type==="Polygon"?[f.geometry.coordinates]:f.geometry.coordinates; if(P.some(p=>inRing(lo,la,p[0]))){ n=f.properties.name; return true; } return false; }); ZN.set(k,n); return n; }
     function globe(t,cw,ch){
       ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,cw,ch); ctx.translate(cw/2,ch/2);
       const Rg=keyLerp(KG_R,Z,true)*cw, big=Rg>cw*1.5;
@@ -284,8 +293,14 @@
       const wA=sm(4.0,4.5,Z), bA=1-sm(4.3,4.7,Z);
       if(wA>0){ ctx.globalAlpha=wA; land(E.world,"#3d8a6a"); }
       if(bA>0){ ctx.globalAlpha=bA; land(E.bay,"#3f8f6c");
+        const zc=sm(3.3,3.7,Z)*(1-sm(4.3,4.6,Z)); if(zc>0 && window.ZONES){   // color each county the way the app does
+          ctx.save(); ctx.beginPath(); E.bay.forEach(r=>{ r.forEach(([lo,la],i)=>{ const [x,y]=proj(lo,la,Rg); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.closePath(); }); ctx.clip("evenodd");
+          ctx.globalAlpha=zc; ctx.fillStyle="#2d2950"; ctx.fillRect(-cw,-ch,cw*2,ch*2);   // land outside the territory goes quiet
+          ctx.globalAlpha=zc*.82; window.ZONES.features.forEach(f=>{ ctx.fillStyle=DEMO_COL[DEMO_LV[f.properties.name]||"n"]; const P=f.geometry.type==="Polygon"?[f.geometry.coordinates]:f.geometry.coordinates;
+            ctx.beginPath(); P.forEach(p=>p.forEach(ring=>{ ring.forEach(([lo,la],i)=>{ const [x,y]=proj(lo,la,Rg); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.closePath(); })); ctx.fill("evenodd"); });
+          ctx.restore(); ctx.globalAlpha=bA; }
         const zl=sm(3.4,3.8,Z)*(1-sm(4.3,4.6,Z)); if(zl>0 && window.ZONES){ ctx.globalAlpha=zl*.5; ctx.strokeStyle="#c4b5fd"; ctx.lineWidth=1; window.ZONES.features.forEach(f=>{ const P=f.geometry.type==="Polygon"?[f.geometry.coordinates]:f.geometry.coordinates; P.forEach(p=>{ ctx.beginPath(); p[0].forEach(([lo,la],i)=>{ const [x,y]=proj(lo,la,Rg); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke(); }); }); }
-        const sd=sm(3.3,3.8,Z)*(1-sm(4.4,4.8,Z)); if(sd>0 && window.HENRYS_RETAILERS){ ctx.globalAlpha=sd; window.HENRYS_RETAILERS.forEach(r=>{ const [x,y,v]=proj(r.lon,r.lat,Rg); if(!v) return; ctx.fillStyle="#ff9a3c"; ctx.beginPath(); ctx.arc(x,y,Math.max(1.6,cw/180),0,TAU); ctx.fill(); }); } }
+        const sd=sm(3.3,3.8,Z)*(1-sm(4.4,4.8,Z)); if(sd>0 && window.HENRYS_RETAILERS){ ctx.globalAlpha=sd; window.HENRYS_RETAILERS.forEach(r=>{ const [x,y,v]=proj(r.lon,r.lat,Rg); if(!v) return; ctx.fillStyle=DEMO_DOT[DEMO_LV[zoneName(r.lon,r.lat)]||"n"]; ctx.beginPath(); ctx.arc(x,y,Math.max(1.6,cw/180),0,TAU); ctx.fill(); }); } }
       ctx.globalAlpha=1;
       if(!big){ // night side + graticule
         const gr=sm(4.5,5,Z); if(gr>0){ ctx.globalAlpha=gr*.18; ctx.strokeStyle="#c9d6ff"; ctx.lineWidth=.6; for(let lo=-180;lo<180;lo+=30){ ctx.beginPath(); for(let la=-80;la<=80;la+=5){ const [x,y,v]=proj(lo,la,Rg); v?ctx.lineTo(x,y):ctx.moveTo(x,y);} ctx.stroke(); } for(let la=-60;la<=60;la+=30){ ctx.beginPath(); for(let lo=-180;lo<=180;lo+=5){ const [x,y,v]=proj(lo,la,Rg); v?ctx.lineTo(x,y):ctx.moveTo(x,y);} ctx.stroke(); } ctx.globalAlpha=1; }
