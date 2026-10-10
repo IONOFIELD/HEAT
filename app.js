@@ -1,5 +1,5 @@
 "use strict";
-const APP_V="20261010053311";
+const APP_V="20261010053510";
 /* Self-update: GitHub Pages caches the page for ~10 min; if a newer build is live, reload into it once. */
 (async()=>{ try{ const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"}); const j=await r.json(); if(j.v && j.v!==APP_V && sessionStorage.getItem("henrys.upd")!==j.v){ sessionStorage.setItem("henrys.upd",j.v); location.replace(location.pathname+"?u="+j.v); } }catch{} })();
 /* =========================================================================
@@ -1242,5 +1242,5 @@ document.addEventListener("click",e=>{ if(e.target.closest("[data-toastact]") &&
 firstRun(); shops=Store.all().sort((a,b)=>a.name.localeCompare(b.name));
 render();
 initMap();
-if(!lsGet("henrys.guided")) setTimeout(openGuide,400);
+setTimeout(openGuide,400);   // the guide opens every time the app starts
 if(navigator.permissions?.query) navigator.permissions.query({name:"geolocation"}).then(p=>{ if(p.state==="granted") locate(false); }).catch(()=>{});
