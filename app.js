@@ -1,5 +1,5 @@
 "use strict";
-const APP_V="20261010061651";
+const APP_V="20261010062932";
 /* Self-update: GitHub Pages caches the page for ~10 min; if a newer build is live, reload into it once. */
 (async()=>{ try{ const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"}); const j=await r.json(); if(j.v && j.v!==APP_V && sessionStorage.getItem("henrys.upd")!==j.v){ sessionStorage.setItem("henrys.upd",j.v); location.replace(location.pathname+"?u="+j.v); } }catch{} })();
 /* works with no signal: keep the app and the map on the phone */
@@ -788,7 +788,7 @@ function routeSheet(){
     <div class="sheet-body">
       ${next?`<a class="btn primary wide" href="${apple(next)}" target="_blank" rel="noopener">Next: ${esc(next.name)}</a>`:`<p class="sub" style="margin:0 0 10px">Every stop has been logged today. Nice work.</p>`}
       <div class="group" style="margin-top:12px">${rows}</div>
-      <div class="grid2" style="margin-top:12px">${legs.map((u,i)=>`<a class="btn" href="${u}" target="_blank" rel="noopener">Google Maps${legs.length>1?` · part ${i+1}`:""}</a>`).join("")}<button class="btn" data-act="route-edit">Change stops</button></div>
+      <div class="grid2" style="margin-top:12px">${legs.map((u,i)=>`<a class="btn" href="${u}" target="_blank" rel="noopener">Google Maps${legs.length>1?` · part ${i+1}`:""}</a>`).join("")}<button class="btn" data-act="route-cal">Add to calendar</button><button class="btn" data-act="route-edit">Change stops</button><button class="btn" data-act="week-open">Plan the week</button></div>
       <button class="btn danger wide" style="margin-top:10px" data-act="route-clear">Clear today’s route</button>
       <p class="sub" style="font-size:13px;margin-top:10px">A stop checks off when you log anything there today.</p>
     </div>`;
@@ -804,12 +804,13 @@ function routeSheet(){
     <h2 style="margin:6px 4px 8px">Worth hitting today</h2><div class="group">${top.map(pickRow).join("")||`<div class="empty">Nothing urgent. Pick from the stores below.</div>`}</div>
     <h2 style="margin:16px 4px 8px">${me?"Closest to you":"Other stores"}</h2><div class="group">${shown.map(pickRow).join("")}</div>
     ${rest.length>shown.length?`<button class="btn wide" style="margin-top:8px" data-act="route-all">Show all ${rest.length}</button>`:""}
+    <button class="btn wide" style="margin-top:12px" data-act="week-open">Plan the whole week instead</button>
     <div class="routebar"><button class="btn primary wide" data-act="route-build" ${sel.size?"":"disabled"}>Build route · ${sel.size} stop${sel.size===1?"":"s"}</button></div>
   </div>`;
 }
 function routeCard(){
   const r=routeToday();
-  if(!r) return `<button class="routecta" data-act="route-open"><span><b>Plan my route</b><small>Pick today’s stores and get them in the quickest order</small></span><span aria-hidden="true">›</span></button>`;
+  if(!r) return `<div class="routepair"><button class="routecta" data-act="route-open"><span><b>Plan my route</b><small>Today’s stores in the quickest order</small></span><span aria-hidden="true">›</span></button><button class="routecta wk" data-act="week-open"><span><b>Plan the week</b><small>Five days, grouped by area</small></span><span aria-hidden="true">›</span></button></div>`;
   const stops=r.ids.map(id=>shops.find(c=>c.id===id)).filter(Boolean), done=stops.filter(touchedToday).length;
   return `<button class="routecta on" data-act="route-open"><span><b>Today’s route · ${done} of ${stops.length} done</b><small>${done<stops.length?`Next: ${esc(stops.find(c=>!touchedToday(c)).name)}`:"Every stop logged"}</small></span><span aria-hidden="true">›</span></button>`;
 }
@@ -845,6 +846,7 @@ function renderSheet(){
   else if(sheet.type==="link") body=linkSheet(sheet.data);
   else if(sheet.type==="menu") body=menuSheet();
   else if(sheet.type==="route") body=routeSheet();
+  else if(sheet.type==="week") body=weekSheet();
   else if(sheet.type==="quick"){ const c=cur(); if(!c){ sheet=null; host.innerHTML=""; return; } body=quickSheet(c); }
   const prevScroll = host.querySelector(".sheet-body")?.scrollTop||0, wasOpen=!!host.querySelector(".sheet");
   const modal = sheet.type==="add" || sheet.type==="link" || sheet.type==="menu" || sheet.mode==="edit" || sheet.mode==="email" || view!=="map";
@@ -1143,6 +1145,8 @@ document.addEventListener("click", async ev=>{
   if(d.view){ const same=view===d.view; view=d.view; remember(); $("#results").hidden=true; document.activeElement?.blur?.(); if(sheet){ sheet=null; draft={}; } if(!same){ selectMode=false; selected.clear(); } render(); updateMapData(); if(same) $("#page").scrollTo({top:0,behavior:"smooth"}); if(view==="map") setTimeout(()=>map?.resize(),0); return; }
   if(d.cat){ cat=d.cat; remember(); render(); updateMapData(); return; }
   if(d.qlog){ const id=sheet?.id; if(id) logTouch(d.qlog,"",undefined,id); return; }
+  if(d.wcal!=null){ weekToCalendar(+d.wcal); return; }
+  if(d.wroute!=null){ const w=weekPlan(), dd=w?.days[+d.wroute]; if(dd){ lsSet(ROUTE_KEY,{date:dd.date, ids:dd.ids, from:"first"}); sheet={type:"route"}; draft={routeSel:new Set(dd.ids)}; render(); updateMapData(); if(view==="map") fitRoute(); toast("Today’s route is set"); } return; }
   if(d.rpick){ draft.routeSel.has(d.rpick)?draft.routeSel.delete(d.rpick):draft.routeSel.add(d.rpick); renderSheet(); return; }
   if(d.mline){ draft.menuOpen = draft.menuOpen===d.mline ? null : d.mline; render(); return; }
   if(d.mdel!=null){ const L=LINE[draft.menuOpen]; const st=L.strains[+d.mdel]; L.strains.splice(+d.mdel,1); delete L.sale[st]; saveMenu(); render(); return; }
@@ -1184,6 +1188,10 @@ document.addEventListener("click", async ev=>{
     [f1,f2].forEach((f,i)=>setTimeout(()=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(f); a.download=f.name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000); },i*400)); toast("Saved 2 spreadsheets"); }
   if(a==="fu-cal"){ const c=cur(); if(c) addFollowUpToCalendar(c); return; }
   if(a==="route-open"){ openRoute(); if(view==="map") fitRoute(); return; }
+  if(a==="route-cal"){ routeToCalendar(); return; }
+  if(a==="week-open"){ sheet={type:"week"}; draft={}; render(); return; }
+  if(a==="week-replan"){ localStorage.removeItem(WEEK_KEY); planWeek(); renderSheet(); toast("Week re-planned"); return; }
+  if(a==="week-cal"){ weekToCalendar(); return; }
   if(a==="route-build"){ buildRoute(); return; }
   if(a==="route-edit"){ const r=routeToday(); draft.routeSel=new Set(r?r.ids:[]); draft.routeEdit=true; renderSheet(); return; }
   if(a==="route-clear"){ localStorage.removeItem(ROUTE_KEY); closeSheet(); toast("Route cleared"); return; }
@@ -1259,6 +1267,7 @@ document.addEventListener("input", ev=>{
   const id=ev.target.id;
   if(id==="orderAmt") draft.orderAmt=ev.target.value;
   if(["spPrice","spUntil","spNote"].includes(id)) draft[id]=ev.target.value;
+  if(id==="dayStart"){ const s=settings(); s.dayStart=ev.target.value||"10:00"; lsSet("henrys.settings",s); const w=lsGet(WEEK_KEY); if(w){ w.start=s.dayStart; lsSet(WEEK_KEY,w); } ev.target.blur(); pendingSheet=false; renderSheet(); }
   if(id==="search"){ $("#searchClear").hidden=!ev.target.value; clearTimeout(searchTimer); searchTimer=setTimeout(()=>runSearch(ev.target.value),280); }
   if(id==="pageSearch"){ pageQuery=ev.target.value; const pos=ev.target.selectionStart; render(); const s=$("#pageSearch"); s.focus(); s.setSelectionRange(pos,pos); }
   if(id==="touchNote") draft.note=ev.target.value;
@@ -1367,19 +1376,88 @@ function backupNag(){ if(!backupDue() || lsGet("henrys.backupNag")===todayISO())
 
 /* ---------- follow-ups on the calendar ---------- */
 function icsEsc(s){ return String(s||"").replace(/\\/g,"\\\\").replace(/\n/g,"\\n").replace(/([,;])/g,"\\$1"); }
+const icsTime=d=>`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}T${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}00`;
+function makeICS(events){
+  const stamp=new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
+  const L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//HEAT//EN","CALSCALE:GREGORIAN"];
+  events.forEach(e=>{ L.push("BEGIN:VEVENT",`UID:${e.uid}@heat`,`DTSTAMP:${stamp}`,`DTSTART:${icsTime(e.start)}`,`DTEND:${icsTime(e.end)}`,`SUMMARY:${icsEsc(e.title)}`);
+    if(e.location) L.push(`LOCATION:${icsEsc(e.location)}`); if(e.desc) L.push(`DESCRIPTION:${icsEsc(e.desc)}`);
+    if(e.alarm!==false) L.push("BEGIN:VALARM",`TRIGGER:-PT${e.alarm||15}M`,"ACTION:DISPLAY",`DESCRIPTION:${icsEsc(e.title)}`,"END:VALARM");
+    L.push("END:VEVENT"); });
+  L.push("END:VCALENDAR"); return L.join("\r\n");
+}
+function downloadICS(ics,name){
+  const url=URL.createObjectURL(new Blob([ics],{type:"text/calendar"})), a=document.createElement("a"); a.href=url;
+  if(!/iPhone|iPad|iPod/.test(navigator.userAgent) && !(navigator.maxTouchPoints>1 && /Macintosh/.test(navigator.userAgent))) a.download=name+".ics";
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },4000);
+}
+function storeEvent(c,start,mins,title,extra){
+  const i=infoOf(c), ph=bestPhone(c)||i.shopPhone||"", mv=nextMoves().find(m=>m.c.id===c.id);
+  const desc=[`${SNAME[c.stage||"new"]}${mv?" · "+mv.why:""}`, ph?`Call: ${ph}`:"", extra||"", c.notes||""].filter(Boolean).join("\n");
+  return {uid:`${c.id}-${icsTime(start)}`, start, end:new Date(start.getTime()+mins*6e4), title, location:i.address?[c.name,i.address,i.city].filter(Boolean).join(", "):c.name, desc};
+}
 function followUpICS(c){
-  const day=(c.nextFollowUp||"").slice(0,10).replace(/-/g,""); if(!day) return null; const i=infoOf(c), ph=bestPhone(c)||i.shopPhone||"";
-  const mv=nextMoves().find(m=>m.c.id===c.id), stamp=new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
-  const desc=[`${SNAME[c.stage||"new"]}${mv?" · "+mv.why:""}`, ph?`Call: ${ph}`:"", i.address?`${i.address}${i.city?", "+i.city:""}`:"", c.notes||""].filter(Boolean).join("\n");
-  return ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//HEAT//EN","CALSCALE:GREGORIAN","BEGIN:VEVENT",`UID:${c.id}-${day}@heat`,`DTSTAMP:${stamp}`,`DTSTART:${day}T100000`,`DTEND:${day}T103000`,
-    `SUMMARY:${icsEsc("Follow up: "+c.name)}`, i.address?`LOCATION:${icsEsc([i.address,i.city].filter(Boolean).join(", "))}`:"", `DESCRIPTION:${icsEsc(desc)}`,
-    "BEGIN:VALARM","TRIGGER:-PT30M","ACTION:DISPLAY",`DESCRIPTION:${icsEsc("Follow up: "+c.name)}`,"END:VALARM","END:VEVENT","END:VCALENDAR"].filter(Boolean).join("\r\n");
+  if(!c.nextFollowUp) return null; const d=new Date(c.nextFollowUp.slice(0,10)+"T10:00:00");
+  return makeICS([{...storeEvent(c,d,30,"Follow up: "+c.name), alarm:30}]);
 }
 function addFollowUpToCalendar(c){
   const ics=followUpICS(c); if(!ics){ toast("Pick a follow-up date first."); return; }
-  const url=URL.createObjectURL(new Blob([ics],{type:"text/calendar"})), a=document.createElement("a"); a.href=url;
-  if(!/iPhone|iPad|iPod/.test(navigator.userAgent) && !(navigator.maxTouchPoints>1 && /Macintosh/.test(navigator.userAgent))) a.download=`follow-up-${normName(c.name).slice(0,24)}.ics`;
-  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },4000);
+  downloadICS(ics,`follow-up-${normName(c.name).slice(0,24)}`);
+}
+
+/* ---------- scheduling a day or a week ---------- */
+const STOP_MIN=40, MPH=22;
+function driveMin(a,b){ const m=miles(a,b); return m==null?0:Math.max(5,Math.round(m*1.3/MPH*60/5)*5); }
+function scheduleDay(dateISO, ids, startHHMM, from){
+  const [h,m]=(startHHMM||"10:00").split(":").map(Number); let t=new Date(`${dateISO}T00:00:00`); t.setHours(h,m||0,0,0);
+  let prev=from||null; return ids.map(id=>shops.find(c=>c.id===id)).filter(Boolean).map(c=>{ if(prev) t=new Date(t.getTime()+driveMin(prev,c)*6e4); const at=new Date(t); t=new Date(t.getTime()+STOP_MIN*6e4); prev=c; return {c,at}; });
+}
+const hhmm=d=>d.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
+function dayEvents(sched){ return sched.map((s,i)=>storeEvent(s.c,s.at,STOP_MIN,`HEAT ${i+1}/${sched.length}: ${s.c.name}`)); }
+function routeToCalendar(){
+  const r=routeToday(); if(!r){ toast("Build a route first."); return; }
+  const sched=scheduleDay(r.date, r.ids, settings().dayStart||"10:00", r.from==="me"?me:null);
+  downloadICS(makeICS(dayEvents(sched)), `heat-route-${r.date}`); toast(`${sched.length} stops sent to your calendar`);
+}
+const WEEK_KEY="henrys.week", DAY_CAP=6;
+function weekdaysFrom(d0){ const out=[]; const d=new Date(d0); d.setHours(12,0,0,0); while(out.length<5){ const wd=d.getDay(); if(wd!==0&&wd!==6) out.push(new Date(d)); d.setDate(d.getDate()+1); } return out; }
+const isoDay=d=>{ const x=new Date(d.getTime()-d.getTimezoneOffset()*6e4); return x.toISOString().slice(0,10); };
+function planWeek(){
+  const days=weekdaysFrom(new Date()).map(d=>({date:isoDay(d), ids:[]})), byDate=new Map(days.map(d=>[d.date,d]));
+  const placed=shops.filter(c=>c.lat!=null), used=new Set();
+  // follow-ups land on their own day (weekends roll to Monday)
+  placed.forEach(c=>{ if(!c.nextFollowUp) return; let d=new Date(c.nextFollowUp.slice(0,10)+"T12:00:00"); if(d<new Date(days[0].date+"T00:00:00")) d=new Date(days[0].date+"T12:00:00");
+    while(d.getDay()===0||d.getDay()===6) d.setDate(d.getDate()+1); const slot=byDate.get(isoDay(d)); if(slot && slot.ids.length<DAY_CAP){ slot.ids.push(c.id); used.add(c.id); } });
+  // everything else worth a stop, grouped by area so each day stays in one part of the Bay
+  const moves=nextMoves().filter(m=>m.c.lat!=null && !used.has(m.c.id)).slice(0, DAY_CAP*5);
+  const zones=new Map(); moves.forEach(m=>{ const z=m.c.zone||"other"; if(!zones.has(z)) zones.set(z,{s:0,list:[]}); const g=zones.get(z); g.s+=m.s; g.list.push(m.c); });
+  [...zones.values()].sort((a,b)=>b.s-a.s).forEach(g=>{ let list=g.list.slice();
+    while(list.length){ const zoneOfDay=d=>{ const f=d.ids.map(id=>shops.find(c=>c.id===id)).find(Boolean); return f?(f.zone||"other"):null; };
+      const z=list[0].zone||"other";
+      const slot=days.find(d=>d.ids.length<DAY_CAP && zoneOfDay(d)===z) || days.filter(d=>d.ids.length<DAY_CAP).sort((a,b)=>a.ids.length-b.ids.length)[0];
+      if(!slot) return; const take=list.splice(0, DAY_CAP-slot.ids.length); slot.ids.push(...take.map(c=>c.id)); } });
+  days.forEach(d=>{ const stops=d.ids.map(id=>shops.find(c=>c.id===id)).filter(Boolean); d.ids=orderStops(null, stops).map(c=>c.id); });
+  const w={made:new Date().toISOString(), start:settings().dayStart||"10:00", days}; lsSet(WEEK_KEY,w); return w;
+}
+function weekPlan(){ const w=lsGet(WEEK_KEY); if(!w) return null; const today=todayISO(); w.days=w.days.filter(d=>d.date>=today); return w.days.length?w:null; }
+function weekToCalendar(dayIdx){
+  const w=weekPlan(); if(!w) return; const ds=dayIdx==null?w.days:[w.days[dayIdx]];
+  const ev=ds.flatMap(d=>dayEvents(scheduleDay(d.date,d.ids,w.start))); if(!ev.length){ toast("Nothing planned to send."); return; }
+  downloadICS(makeICS(ev), dayIdx==null?`heat-week-${w.days[0].date}`:`heat-${ds[0].date}`); toast(`${ev.length} stop${ev.length===1?"":"s"} sent to your calendar`);
+}
+function weekSheet(){
+  const w=weekPlan()||planWeek(), today=todayISO();
+  const dayName=iso=>new Date(iso+"T12:00:00").toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric"});
+  const blocks=w.days.map((d,i)=>{ const sched=scheduleDay(d.date,d.ids,w.start); const area=[...new Set(sched.map(s=>zoneLabel(s.c.zone).split(" · ").pop()))].slice(0,2).join(" + ");
+    return `<section class="wday"><div class="wday-h"><div><b>${d.date===today?"Today · ":""}${dayName(d.date)}</b><small>${sched.length?`${sched.length} stop${sched.length===1?"":"s"} · ${esc(area)}`:"Open day"}</small></div>
+      ${sched.length?`<div class="wday-a">${d.date===today?`<button class="chipbtn" data-wroute="${i}">Make today’s route</button>`:""}<button class="chipbtn" data-wcal="${i}">Calendar</button></div>`:""}</div>
+      ${sched.map(s=>`<button class="wstop" data-open="${s.c.id}"><span class="num">${hhmm(s.at)}</span><span><b>${esc(s.c.name)}</b><small>${esc(nextMoves().find(m=>m.c.id===s.c.id)?.why||infoOf(s.c).city||"")}</small></span></button>`).join("")}</section>`; }).join("");
+  return `<div class="sheet-head"><div><div class="eyebrow">Plan the week</div><h1>Your week</h1><div class="sub">Follow-ups land on their day. Everything else is grouped by area so each day stays in one part of the Bay.</div></div>${xBtn}</div>
+  <div class="sheet-body">
+    <div class="grid2" style="margin-bottom:12px"><label class="field"><span>Day starts at</span><input id="dayStart" type="time" value="${esc(w.start)}"></label><button class="btn" data-act="week-replan" style="align-self:end">Re-plan</button></div>
+    ${blocks}
+    <div class="routebar"><button class="btn primary wide" data-act="week-cal">Add the whole week to my calendar</button></div>
+  </div>`;
 }
 
 /* ---------- misc ---------- */

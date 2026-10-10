@@ -88,7 +88,8 @@
       ctx.lineWidth=1.5; for(let x=o+560;x<o+1400;x+=45){ const u=(x-(o+520))/900, cy=-556+(1-Math.pow(1-2*Math.abs(u-.5),1)*0)*0; const yc=-556+ (1-(2*u-1)**2)*496; ctx.beginPath(); ctx.moveTo(x,yc); ctx.lineTo(x,-130); ctx.stroke(); }
       { ctx.fillStyle="#ff5a5a"; [o+520,o+1420].forEach(x=>{ ctx.beginPath(); ctx.arc(x,-566,6,0,TAU); ctx.fill(); }); }
       // SF: Sutro Tower on its hill, then downtown
-      bump(o+1850,o+2600,300,0,sil2);
+      bump(o+1560,o+2760,340,0,sil2);                          // the Presidio and the hills: the Golden Gate lands here
+      ctx.fillStyle=sil2; ctx.fillRect(o+2500,-36,1400,36);      // the city's ground, running to the Bay Bridge
       ctx.strokeStyle=sil; ctx.lineWidth=7; const sx=o+2210;
       ctx.beginPath(); ctx.moveTo(sx-34,-250); ctx.lineTo(sx-6,-640); ctx.moveTo(sx+34,-250); ctx.lineTo(sx+6,-640); ctx.moveTo(sx,-250); ctx.lineTo(sx,-640); ctx.stroke();
       ctx.lineWidth=4; [-430,-560].forEach(y=>{ ctx.beginPath(); ctx.moveTo(sx-26,y); ctx.lineTo(sx+26,y); ctx.stroke(); });
@@ -106,8 +107,7 @@
       // east end comes down onto the Oakland shore
       ctx.beginPath(); ctx.moveTo(o+6300,-118); ctx.lineTo(o+6700,-6); ctx.lineTo(o+6700,4); ctx.lineTo(o+6300,-108); ctx.fill();
       [6400,6520,6620].forEach(x=>ctx.fillRect(o+x-5,-118+(x-6300)*.28,10,118-(x-6300)*.28));
-      // Golden Gate's south end sits on the Presidio anchorage
-      ctx.beginPath(); ctx.moveTo(o+1760,0); ctx.lineTo(o+1785,-146); ctx.lineTo(o+1880,-146); ctx.lineTo(o+1920,0); ctx.fill();
+
       [o+4250,o+5000,o+5750].forEach(x=>{ ctx.fillRect(x-8,-380,16,380); });
       ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(o+3850,-115); [o+4250,o+5000,o+5750].forEach((x,i,a)=>{ ctx.quadraticCurveTo(x-(i?375:200),-140,x,-378); }); ctx.quadraticCurveTo(o+6000,-140,o+6250,-115); ctx.stroke();
       ctx.fillStyle="#fff"; for(let x=o+3850;x<o+6250;x+=70){ const d=Math.min(...[o+4250,o+5000,o+5750].map(c=>Math.abs(x-c))); const y=-115-Math.max(0,263*(1-d/375)**2); ctx.beginPath(); ctx.arc(x,y,3.2,0,TAU); ctx.fill(); }
