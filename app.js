@@ -1,5 +1,5 @@
 "use strict";
-const APP_V="20261010062932";
+const APP_V="20261010063043";
 /* Self-update: GitHub Pages caches the page for ~10 min; if a newer build is live, reload into it once. */
 (async()=>{ try{ const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"}); const j=await r.json(); if(j.v && j.v!==APP_V && sessionStorage.getItem("henrys.upd")!==j.v){ sessionStorage.setItem("henrys.upd",j.v); location.replace(location.pathname+"?u="+j.v); } }catch{} })();
 /* works with no signal: keep the app and the map on the phone */
@@ -1267,7 +1267,6 @@ document.addEventListener("input", ev=>{
   const id=ev.target.id;
   if(id==="orderAmt") draft.orderAmt=ev.target.value;
   if(["spPrice","spUntil","spNote"].includes(id)) draft[id]=ev.target.value;
-  if(id==="dayStart"){ const s=settings(); s.dayStart=ev.target.value||"10:00"; lsSet("henrys.settings",s); const w=lsGet(WEEK_KEY); if(w){ w.start=s.dayStart; lsSet(WEEK_KEY,w); } ev.target.blur(); pendingSheet=false; renderSheet(); }
   if(id==="search"){ $("#searchClear").hidden=!ev.target.value; clearTimeout(searchTimer); searchTimer=setTimeout(()=>runSearch(ev.target.value),280); }
   if(id==="pageSearch"){ pageQuery=ev.target.value; const pos=ev.target.selectionStart; render(); const s=$("#pageSearch"); s.focus(); s.setSelectionRange(pos,pos); }
   if(id==="touchNote") draft.note=ev.target.value;
@@ -1281,6 +1280,7 @@ document.addEventListener("input", ev=>{
 });
 document.addEventListener("change", async ev=>{
   const id=ev.target.id;
+  if(id==="dayStart"){ const s=settings(); s.dayStart=ev.target.value||"10:00"; lsSet("henrys.settings",s); const w=lsGet(WEEK_KEY); if(w){ w.start=s.dayStart; lsSet(WEEK_KEY,w); } ev.target.blur(); pendingSheet=false; renderSheet(); }
   if(id==="spLine"){ draft.spLine=ev.target.value; draft.spStrain=""; ev.target.blur(); pendingSheet=false; renderSheet(); }
   if(id==="spStrain") draft.spStrain=ev.target.value;
   if(id==="addLine"){ draft.line=ev.target.value; draft.strain=undefined; draft.price=undefined; ev.target.blur(); pendingSheet=false; renderSheet(); }
@@ -1434,7 +1434,9 @@ function planWeek(){
   [...zones.values()].sort((a,b)=>b.s-a.s).forEach(g=>{ let list=g.list.slice();
     while(list.length){ const zoneOfDay=d=>{ const f=d.ids.map(id=>shops.find(c=>c.id===id)).find(Boolean); return f?(f.zone||"other"):null; };
       const z=list[0].zone||"other";
-      const slot=days.find(d=>d.ids.length<DAY_CAP && zoneOfDay(d)===z) || days.filter(d=>d.ids.length<DAY_CAP).sort((a,b)=>a.ids.length-b.ids.length)[0];
+      const mid=pts=>({lat:pts.reduce((s,c)=>s+c.lat,0)/pts.length, lon:pts.reduce((s,c)=>s+c.lon,0)/pts.length}), gc=mid(list);
+      const open=days.filter(d=>d.ids.length<DAY_CAP), stopsOf=d=>d.ids.map(id=>shops.find(c=>c.id===id)).filter(Boolean);
+      const slot=open.find(d=>zoneOfDay(d)===z) || open.find(d=>!d.ids.length) || open.sort((a,b)=>miles(gc,mid(stopsOf(a)))-miles(gc,mid(stopsOf(b))))[0];
       if(!slot) return; const take=list.splice(0, DAY_CAP-slot.ids.length); slot.ids.push(...take.map(c=>c.id)); } });
   days.forEach(d=>{ const stops=d.ids.map(id=>shops.find(c=>c.id===id)).filter(Boolean); d.ids=orderStops(null, stops).map(c=>c.id); });
   const w={made:new Date().toISOString(), start:settings().dayStart||"10:00", days}; lsSet(WEEK_KEY,w); return w;
