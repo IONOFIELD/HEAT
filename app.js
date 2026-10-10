@@ -1,7 +1,11 @@
 "use strict";
-const APP_V="20261010060752";
+const APP_V="20261010061304";
 /* Self-update: GitHub Pages caches the page for ~10 min; if a newer build is live, reload into it once. */
 (async()=>{ try{ const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"}); const j=await r.json(); if(j.v && j.v!==APP_V && sessionStorage.getItem("henrys.upd")!==j.v){ sessionStorage.setItem("henrys.upd",j.v); location.replace(location.pathname+"?u="+j.v); } }catch{} })();
+/* works with no signal: keep the app and the map on the phone */
+if("serviceWorker" in navigator && location.protocol==="https:") addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+function netPill(){ let p=document.getElementById("netPill"); if(navigator.onLine){ p?.remove(); return; } if(!p){ p=document.createElement("div"); p.id="netPill"; p.className="netpill"; p.setAttribute("role","status"); p.textContent="No signal · everything you log still saves"; document.body.appendChild(p); } }
+addEventListener("offline",netPill); addEventListener("online",()=>{ netPill(); if(typeof toast==="function") toast("Back online"); }); netPill();
 /* =========================================================================
    HEAT — field sales map for a Henry's rep
    Map: MapLibre GL + OpenFreeMap vector tiles (© OpenStreetMap contributors)
@@ -191,22 +195,26 @@ async function initMap(){
     map.addSource("pins",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
     map.addSource("ghosts",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
     map.addSource("me",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+    map.addSource("route",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
     map.addLayer({id:"zones-fill",type:"fill",source:"zones",paint:{"fill-color":["get","color"],"fill-opacity":["interpolate",["linear"],["zoom"],7,.13,10,.08,13,.025]}}, firstSym);
     map.addLayer({id:"zones-line",type:"line",source:"zones",paint:{"line-color":["get","color"],"line-width":["case",["get","sel"],3,1.2],"line-opacity":["interpolate",["linear"],["zoom"],7,.75,13,.25]}}, firstSym);
     map.addLayer({id:"zones-label",type:"symbol",source:"zlabels",maxzoom:10,layout:{"text-field":["get","label"],"text-font":["Noto Sans Bold"],"text-size":13,"text-max-width":9},paint:{"text-color":"#ffffff","text-halo-color":"#140f27","text-halo-width":1.6}});
+    map.addLayer({id:"route-line",type:"line",source:"route",filter:["==",["geometry-type"],"LineString"],layout:{"line-join":"round","line-cap":"round"},paint:{"line-color":"#c4b5fd","line-width":3,"line-opacity":.85,"line-dasharray":[1.5,1.5]}});
     map.addLayer({id:"me-halo",type:"circle",source:"me",paint:{"circle-radius":18,"circle-color":"#60a5fa","circle-opacity":.18}});
     map.addLayer({id:"me-dot",type:"circle",source:"me",paint:{"circle-radius":7,"circle-color":"#3b82f6","circle-stroke-color":"#ffffff","circle-stroke-width":2.5}});
     map.addLayer({id:"ghosts",type:"circle",source:"ghosts",paint:{"circle-radius":["interpolate",["linear"],["zoom"],9,5,15,9],"circle-color":"rgba(255,154,60,.22)","circle-stroke-color":"#ff9a3c","circle-stroke-width":2.5}});
     map.addLayer({id:"ghosts-label",type:"symbol",source:"ghosts",minzoom:12,layout:{"text-field":["get","name"],"text-font":["Noto Sans Regular"],"text-size":12,"text-offset":[0,1.1],"text-anchor":"top","text-max-width":8},paint:{"text-color":"#ffc38a","text-halo-color":"#140f27","text-halo-width":1.4}});
     map.addLayer({id:"pins",type:"circle",source:"pins",paint:{"circle-radius":["interpolate",["linear"],["zoom"],7,5,12,8,16,11],"circle-color":["get","color"],"circle-stroke-color":["case",["get","sel"],"#c4b5fd","#ffffff"],"circle-stroke-width":["case",["get","sel"],4,2]}});
     map.addLayer({id:"pins-label",type:"symbol",source:"pins",minzoom:10.5,layout:{"text-field":["get","name"],"text-font":["Noto Sans Bold"],"text-size":12.5,"text-offset":[0,1.15],"text-anchor":"top","text-max-width":9,"text-optional":true},paint:{"text-color":"#f5f2ff","text-halo-color":"#140f27","text-halo-width":1.6}});
+    map.addLayer({id:"route-num",type:"circle",source:"route",filter:["==",["geometry-type"],"Point"],paint:{"circle-radius":11,"circle-color":["case",["get","done"],"#4ade80","#ff9a3c"],"circle-stroke-color":"#140f27","circle-stroke-width":2,"circle-translate":[0,-22]}});
+    map.addLayer({id:"route-num-t",type:"symbol",source:"route",filter:["==",["geometry-type"],"Point"],layout:{"text-field":["get","n"],"text-font":["Noto Sans Bold"],"text-size":12,"text-allow-overlap":true,"text-ignore-placement":true},paint:{"text-color":"#140f27","text-translate":[0,-22]}});
     mapReady=true; updateMapData();
     map.fitBounds(SF_BOUNDS,{padding:{top:150,bottom:120,left:16,right:16},duration:0});
   });
   map.on("click", e=>{
     const box=[[e.point.x-12,e.point.y-12],[e.point.x+12,e.point.y+12]];
     const pin = map.queryRenderedFeatures(box,{layers:["pins"]})[0];
-    if(pin){ openSheet({type:"shop",id:pin.properties.id}); return; }
+    if(pin){ openSheet({type:"quick",id:pin.properties.id}); return; }
     const gh = map.queryRenderedFeatures(box,{layers:["ghosts"]})[0];
     if(gh){ openSheet({type:"candidate",data:ghosts.find(g=>g.osm===gh.properties.osm)}); return; }
     const z = map.queryRenderedFeatures(e.point,{layers:["zones-fill"]})[0];
@@ -217,7 +225,7 @@ async function initMap(){
 }
 function updateMapData(){
   if(!mapReady) return;
-  const selZone = sheet?.type==="zone" ? sheet.id : null, selShop = sheet?.type==="shop" ? sheet.id : null;
+  const selZone = sheet?.type==="zone" ? sheet.id : null, selShop = (sheet?.type==="shop"||sheet?.type==="quick") ? sheet.id : null;
   const zf=[], zl=[];
   ZINFO.forEach(z=>{
     const s=zoneSummary(z.id,cat);
@@ -229,6 +237,10 @@ function updateMapData(){
   map.getSource("zlabels").setData({type:"FeatureCollection",features:zl});
   map.getSource("pins").setData({type:"FeatureCollection",features:shops.filter(c=>c.lat!=null).map(c=>({type:"Feature",properties:{id:c.id,name:c.name,color:COLORS[health(c,cat).lv],sel:c.id===selShop},geometry:{type:"Point",coordinates:[c.lon,c.lat]}}))});
   map.getSource("ghosts").setData({type:"FeatureCollection",features:ghosts.filter(g=>!onList(g)).map(g=>({type:"Feature",properties:{osm:g.osm,name:g.name},geometry:{type:"Point",coordinates:[g.lon,g.lat]}}))});
+  { const r=routeToday(), stops=r?r.ids.map(id=>shops.find(c=>c.id===id)).filter(c=>c&&c.lat!=null):[], F=[];
+    if(stops.length){ const line=[...(me&&r.from==="me"?[[me.lon,me.lat]]:[]),...stops.map(c=>[c.lon,c.lat])]; if(line.length>1) F.push({type:"Feature",properties:{},geometry:{type:"LineString",coordinates:line}});
+      stops.forEach((c,i)=>F.push({type:"Feature",properties:{n:touchedToday(c)?"✓":String(i+1),done:touchedToday(c)},geometry:{type:"Point",coordinates:[c.lon,c.lat]}})); }
+    map.getSource("route").setData({type:"FeatureCollection",features:F}); }
   map.getSource("me").setData({type:"FeatureCollection",features:me?[{type:"Feature",properties:{},geometry:{type:"Point",coordinates:[me.lon,me.lat]}}]:[]});
 }
 const isWide = () => matchMedia("(min-width:900px)").matches && !(window.UI_K>1);
@@ -541,7 +553,7 @@ function viewToday(){
   const hr=new Date().getHours(), greet=hr<12?"Good morning":hr<17?"Good afternoon":"Good evening";
   const sec=(t,s,arr,rf,empty)=>`<section class="section"><div class="section-head"><h2>${t}</h2><span class="sub" style="font-size:13px">${s}</span></div><div class="group">${arr.length?arr.map(c=>shopRow(c,"all",rf(c))).join(""):`<div class="empty">${empty}</div>`}</div></section>`;
   if(!shops.length) return head(`${greet}${repFirst()?", "+esc(repFirst()):""}`)+`<p class="sub">No stores yet. Head to the Map tab to add your first one.</p>`;
-  return head(`${greet}${repFirst()?", "+esc(repFirst()):""}`, `<p class="sub" style="margin:0">${new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})}</p>`)+momentumRow()+goalCard()+`
+  return head(`${greet}${repFirst()?", "+esc(repFirst()):""}`, `<p class="sub" style="margin:0">${new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})}</p>`)+routeCard()+backupCard()+momentumRow()+goalCard()+`
   <div class="stats">
     <div class="stat ${closing.length?"alert":""}"><b>${closing.length}</b><span>deals to close</span></div>
     <div class="stat ${due.length?"alert":""}"><b>${due.length}</b><span>follow-ups due</span></div>
@@ -587,7 +599,7 @@ function viewStores(){
     <input id="listFile" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden>
   </div></section>
   <section class="section"><h2 style="margin:0 4px 8px">Backup</h2><div class="group" style="padding:14px">
-    <p class="sub" style="margin:0 0 12px">Stores are saved on this device. Export a backup to move them to your iPad or Mac, then import it there.</p>
+    <p class="sub" style="margin:0 0 12px">Stores are saved on this device. Export a backup to move them to your iPad or Mac, then import it there.${lastBackupDays()!=null?` Last backup ${ago(lastBackupDays())}.`:" No backup saved yet."}</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="export">Export backup</button><label class="btn" for="importFile">Import backup</label><input id="importFile" type="file" accept="application/json,.json" hidden>
     </div></div></section>
   <section class="section"><h2 style="margin:0 4px 8px">You</h2><div class="group" style="padding:14px"><p class="sub" style="margin:0 0 10px">Used to sign your texts, emails and reports. Saved only on this device.</p><div class="grid2"><label class="field"><span>Your name</span><input id="meName" autocomplete="name" value="${esc(repInfo().name)}"></label><label class="field"><span>Phone / email line</span><input id="mePhone" value="${esc(repInfo().phone)}"></label></div></div></section>
@@ -722,8 +734,98 @@ function viewReport(){
   <section class="section"><div class="section-head"><h2>Report text</h2><span class="sub" style="font-size:13px">ready to paste</span></div><pre class="rptext" id="rpText">${esc(reportText(D))}</pre></section>`;
 }
 
+/* ---------- plan my route ---------- */
+const ROUTE_KEY="henrys.route";
+function routeToday(){ const r=lsGet(ROUTE_KEY); if(!r || r.date!==todayISO()) return null; r.ids=r.ids.filter(id=>shops.some(c=>c.id===id&&c.lat!=null)); return r.ids.length?r:null; }
+function touchedToday(c){ return (c.touches||[]).some(t=>ACTIVE.includes(t.type) && daysSince(t.at)===0); }
+const apple=(c)=>`https://maps.apple.com/?daddr=${c.lat},${c.lon}&q=${encodeURIComponent(c.name)}`;
+const gmPlace=(c)=>{ const i=infoOf(c); return i.address ? [c.name, i.address, i.city||"", "CA"].filter(Boolean).join(", ") : `${c.lat},${c.lon}`; };
+function orderStops(start, list){
+  const D=(a,b)=>miles(a,b)||0, pts=list.slice(), out=[]; let cur=start;
+  if(!cur){ out.push(pts.shift()); cur=out[0]; }
+  while(pts.length){ let bi=0,bd=1e9; pts.forEach((p,i)=>{ const d=D(cur,p); if(d<bd){ bd=d; bi=i; } }); cur=pts.splice(bi,1)[0]; out.push(cur); }
+  const P=start?[start,...out]:out, n=P.length; let better=true, guard=0;
+  while(better && guard++<60){ better=false;
+    for(let i=1;i<n-1;i++) for(let k=i+1;k<n;k++){
+      const d0=D(P[i-1],P[i])+(k<n-1?D(P[k],P[k+1]):0), d1=D(P[i-1],P[k])+(k<n-1?D(P[i],P[k+1]):0);
+      if(d1+1e-9<d0){ P.splice(i,k-i+1,...P.slice(i,k+1).reverse()); better=true; } } }
+  return start?P.slice(1):P;
+}
+function routeSuggest(){
+  const moves=nextMoves().filter(m=>m.c.lat!=null);
+  const anchor=me || moves[0]?.c; if(!anchor) return [];
+  return moves.filter(m=>miles(anchor,m.c)<=15).slice(0,6).map(m=>m.c.id);
+}
+function openRoute(){ const r=routeToday(); sheet={type:"route"}; draft={ routeSel:new Set(r?r.ids:routeSuggest()), routeEdit:!r }; if(!me) locate(false); render(); }
+function buildRoute(){
+  const picks=shops.filter(c=>draft.routeSel.has(c.id)&&c.lat!=null); if(!picks.length){ toast("Pick at least one store."); return; }
+  const ordered=orderStops(me, picks);
+  lsSet(ROUTE_KEY,{date:todayISO(), ids:ordered.map(c=>c.id), from:me?"me":"first"});
+  draft.routeEdit=false; renderSheet(); updateMapData(); fitRoute();
+}
+function fitRoute(){ const r=routeToday(); if(!r||!map) return; const pts=r.ids.map(id=>shops.find(c=>c.id===id)).filter(Boolean); if(me) pts.push(me);
+  const lons=pts.map(p=>p.lon), lats=pts.map(p=>p.lat); if(!pts.length) return;
+  map.fitBounds([[Math.min(...lons),Math.min(...lats)],[Math.max(...lons),Math.max(...lats)]],{padding: isWide()?{top:80,bottom:80,left:80,right:500}:{top:130,bottom:Math.round(viewH()*.55),left:40,right:40},maxZoom:15,duration:800}); }
+function googleLegs(stops){
+  const legs=[]; let origin=me?`${me.lat},${me.lon}`:null, rest=stops.slice();
+  if(!origin){ origin=gmPlace(rest[0]); rest=rest.slice(1); }
+  while(rest.length){ const part=rest.splice(0,10), dest=part.pop();
+    const q=new URLSearchParams({api:"1",origin,destination:gmPlace(dest),travelmode:"driving"}); if(part.length) q.set("waypoints",part.map(gmPlace).join("|"));
+    legs.push(`https://www.google.com/maps/dir/?${q}`); origin=gmPlace(dest); }
+  return legs;
+}
+function routeSheet(){
+  const r=routeToday();
+  if(r && !draft.routeEdit){
+    const stops=r.ids.map(id=>shops.find(c=>c.id===id)).filter(Boolean), done=stops.filter(touchedToday).length, next=stops.find(c=>!touchedToday(c));
+    let prev=me, total=0; const rows=stops.map((c,i)=>{ const d=miles(prev,c); if(d!=null) total+=d; prev=c; const ok=touchedToday(c);
+      return `<div class="rstop ${ok?"done":""}"><span class="rnum">${ok?"✓":i+1}</span><button class="rbody" data-open="${c.id}"><b>${esc(c.name)}</b><small>${esc(infoOf(c).city||zoneLabel(c.zone))}${d!=null?` · ${fmtMi(d)}`:""}</small></button><a class="chipbtn" href="${apple(c)}" target="_blank" rel="noopener">Go</a></div>`; }).join("");
+    const legs=googleLegs(stops);
+    return `<div class="sheet-head"><div><div class="eyebrow">Today’s route</div><h1>${done===stops.length?"Route done":`${stops.length-done} stop${stops.length-done===1?"":"s"} left`}</h1><div class="sub">${stops.length} stores · about ${fmtMi(total)} ${me?"from where you are":"start to finish"}</div></div>${xBtn}</div>
+    <div class="sheet-body">
+      ${next?`<a class="btn primary wide" href="${apple(next)}" target="_blank" rel="noopener">Next: ${esc(next.name)}</a>`:`<p class="sub" style="margin:0 0 10px">Every stop has been logged today. Nice work.</p>`}
+      <div class="group" style="margin-top:12px">${rows}</div>
+      <div class="grid2" style="margin-top:12px">${legs.map((u,i)=>`<a class="btn" href="${u}" target="_blank" rel="noopener">Google Maps${legs.length>1?` · part ${i+1}`:""}</a>`).join("")}<button class="btn" data-act="route-edit">Change stops</button></div>
+      <button class="btn danger wide" style="margin-top:10px" data-act="route-clear">Clear today’s route</button>
+      <p class="sub" style="font-size:13px;margin-top:10px">A stop checks off when you log anything there today.</p>
+    </div>`;
+  }
+  const sel=draft.routeSel, anchor=me||shops.find(c=>sel.has(c.id))||null, sug=new Set(routeSuggest());
+  const pickRow=c=>{ const d=miles(anchor,c), on=sel.has(c.id), mv=nextMoves().find(m=>m.c.id===c.id);
+    return `<button class="row sel ${on?"on":""}" data-rpick="${c.id}"><span class="check" aria-hidden="true"></span><span class="t"><b>${esc(c.name)}</b><small>${esc(mv?.why||infoOf(c).city||"")}</small></span><span class="sub num" style="font-size:13px">${d!=null?fmtMi(d):""}</span></button>`; };
+  const placed=shops.filter(c=>c.lat!=null), top=placed.filter(c=>sug.has(c.id)||sel.has(c.id)), rest=placed.filter(c=>!top.includes(c)).sort((a,b)=>(miles(anchor,a)??1e9)-(miles(anchor,b)??1e9));
+  const shown=draft.routeAll?rest:rest.slice(0,12);
+  return `<div class="sheet-head"><div><div class="eyebrow">Plan my route</div><h1>Pick today’s stops</h1><div class="sub">HEAT puts them in the quickest order${me?" from where you are":""}.</div></div>${xBtn}</div>
+  <div class="sheet-body">
+    ${me?"":`<button class="btn sm" data-act="route-me" style="margin-bottom:10px">Start from my location</button>`}
+    <h2 style="margin:6px 4px 8px">Worth hitting today</h2><div class="group">${top.map(pickRow).join("")||`<div class="empty">Nothing urgent. Pick from the stores below.</div>`}</div>
+    <h2 style="margin:16px 4px 8px">${me?"Closest to you":"Other stores"}</h2><div class="group">${shown.map(pickRow).join("")}</div>
+    ${rest.length>shown.length?`<button class="btn wide" style="margin-top:8px" data-act="route-all">Show all ${rest.length}</button>`:""}
+    <div class="routebar"><button class="btn primary wide" data-act="route-build" ${sel.size?"":"disabled"}>Build route · ${sel.size} stop${sel.size===1?"":"s"}</button></div>
+  </div>`;
+}
+function routeCard(){
+  const r=routeToday();
+  if(!r) return `<button class="routecta" data-act="route-open"><span><b>Plan my route</b><small>Pick today’s stores and get them in the quickest order</small></span><span aria-hidden="true">›</span></button>`;
+  const stops=r.ids.map(id=>shops.find(c=>c.id===id)).filter(Boolean), done=stops.filter(touchedToday).length;
+  return `<button class="routecta on" data-act="route-open"><span><b>Today’s route · ${done} of ${stops.length} done</b><small>${done<stops.length?`Next: ${esc(stops.find(c=>!touchedToday(c)).name)}`:"Every stop logged"}</small></span><span aria-hidden="true">›</span></button>`;
+}
+
+/* ---------- quick log from the map pin ---------- */
+const QUICK=[["visit","Visited"],["sample","Samples"],["call","Called"],["text","Texted"]];
+function quickSheet(c){
+  const h=health(c), d=miles(me,c), mv=nextMoves().find(m=>m.c.id===c.id), today=(c.touches||[]).filter(t=>daysSince(t.at)===0);
+  return `<div class="sheet-head"><div><div class="eyebrow">${esc(infoOf(c).city||zoneLabel(c.zone)||"")}${d!=null?" · "+fmtMi(d):""}</div><h1>${esc(c.name)}</h1>
+      <div class="qstat"><span class="pill lv-${h.lv}">${esc(SNAME[c.stage||"new"])}</span><span class="sub">${esc(mv?.why||h.reasons?.[0]||"")}</span></div></div>${xBtn}</div>
+    <div class="sheet-body">
+      <div class="qlog" role="group" aria-label="Log what happened">${QUICK.map(([k,l])=>{ const n=today.filter(t=>t.type===k).length; return `<button class="qbtn ${n?"on":""}" data-qlog="${k}">${n?"✓ ":""}${l}</button>`; }).join("")}</div>
+      ${today.length?`<p class="sub" style="font-size:13px;margin:8px 2px 0">Logged today: ${today.map(t=>esc(TOUCH[t.type]||t.type)).join(", ")}</p>`:""}
+      <div class="grid2" style="margin-top:12px">${c.lat!=null?`<a class="btn violet" href="${apple(c)}" target="_blank" rel="noopener">Directions</a>`:""}<button class="btn" data-open="${c.id}">Open store ›</button></div>
+    </div>`;
+}
+
 /* ---------- sheets ---------- */
-function openSheet(s){ sheet=s; draft={}; if(s.type==="shop"){ const c=shops.find(x=>x.id===s.id); if(c?.lat!=null && view==="map") flyTo(c.lon,c.lat,Math.max(13,map.getZoom())); } if(s.type==="zone"){ const z=ZMAP[s.id]; if(z) fitZone(z); } $("#results").hidden=true; render(); updateMapData(); }
+function openSheet(s){ sheet=s; draft={}; if(s.type==="shop"||s.type==="quick"){ const c=shops.find(x=>x.id===s.id); if(c?.lat!=null && view==="map") flyTo(c.lon,c.lat,Math.max(13,map.getZoom())); } if(s.type==="zone"){ const z=ZMAP[s.id]; if(z) fitZone(z); } $("#results").hidden=true; render(); updateMapData(); }
 function closeSheet(){ sheet=null; draft={}; render(); updateMapData(); }
 function renderSheet(){
   const host=$("#sheetHost");
@@ -739,6 +841,8 @@ function renderSheet(){
   else if(sheet.type==="nearby") body=nearbySheet(sheet.data);
   else if(sheet.type==="link") body=linkSheet(sheet.data);
   else if(sheet.type==="menu") body=menuSheet();
+  else if(sheet.type==="route") body=routeSheet();
+  else if(sheet.type==="quick"){ const c=cur(); if(!c){ sheet=null; host.innerHTML=""; return; } body=quickSheet(c); }
   const prevScroll = host.querySelector(".sheet-body")?.scrollTop||0, wasOpen=!!host.querySelector(".sheet");
   const modal = sheet.type==="add" || sheet.type==="link" || sheet.type==="menu" || sheet.mode==="edit" || sheet.mode==="email" || view!=="map";
   const peek = !modal && !sheet.full;
@@ -805,7 +909,7 @@ function shopSheet(c){
     <div class="blk lv-${h.lv}" style="border-left:3px solid var(--c)"><h2>Status</h2>
       <div class="reasons">${(h.detail||[{lv:h.lv,t:h.reasons[0]}]).map(r=>`<span class="pill lv-${r.lv}">${esc(r.t)}</span>`).join("")}</div>
       <dl class="kv num" style="margin-top:12px"><dt>Last contact</dt><dd>${ago(daysSince(c.lastContact))}</dd><dt>Last order</dt><dd>${c.lastOrderAt?ago(daysSince(c.lastOrderAt)):"none yet"}</dd>
-      <dt>Follow up</dt><dd><input type="date" id="fu" class="input" style="min-height:38px;padding:6px 10px;font-size:16px;width:auto" value="${c.nextFollowUp?c.nextFollowUp.slice(0,10):""}"></dd></dl>
+      <dt>Follow up</dt><dd><input type="date" id="fu" class="input" style="min-height:38px;padding:6px 10px;font-size:16px;width:auto" value="${c.nextFollowUp?c.nextFollowUp.slice(0,10):""}">${c.nextFollowUp?` <button class="chipbtn" data-act="fu-cal">Add to calendar</button>`:""}</dd></dl>
     </div>
     <div class="blk"><h2>Log what happened</h2>
       <input class="input" id="touchNote" placeholder="Note (optional): “yes to 3 cs at $165”" value="${esc(draft.note||"")}" style="margin-bottom:10px">
@@ -1035,6 +1139,8 @@ document.addEventListener("click", async ev=>{
   if(d.rp){ rpPeriod=d.rp; render(); return; }
   if(d.view){ const same=view===d.view; view=d.view; remember(); $("#results").hidden=true; document.activeElement?.blur?.(); if(sheet){ sheet=null; draft={}; } if(!same){ selectMode=false; selected.clear(); } render(); updateMapData(); if(same) $("#page").scrollTo({top:0,behavior:"smooth"}); if(view==="map") setTimeout(()=>map?.resize(),0); return; }
   if(d.cat){ cat=d.cat; remember(); render(); updateMapData(); return; }
+  if(d.qlog){ const id=sheet?.id; if(id) logTouch(d.qlog,"",undefined,id); return; }
+  if(d.rpick){ draft.routeSel.has(d.rpick)?draft.routeSel.delete(d.rpick):draft.routeSel.add(d.rpick); renderSheet(); return; }
   if(d.mline){ draft.menuOpen = draft.menuOpen===d.mline ? null : d.mline; render(); return; }
   if(d.mdel!=null){ const L=LINE[draft.menuOpen]; const st=L.strains[+d.mdel]; L.strains.splice(+d.mdel,1); delete L.sale[st]; saveMenu(); render(); return; }
   if(d.delsp!=null){ const c=clone(cur()); c.specials.splice(+d.delsp,1); saveShop(c); toast("Deal removed"); return; }
@@ -1073,6 +1179,13 @@ document.addEventListener("click", async ev=>{
     const f1=new File([storesCSV(D)],`henrys-stores-${tag}.csv`,{type:"text/csv"}), f2=new File([activityCSV(D)],`henrys-activity-${tag}.csv`,{type:"text/csv"});
     try{ if(navigator.canShare?.({files:[f1,f2]})){ await navigator.share({files:[f1,f2],title:"Henry's report"}); return; } }catch(e){ if(e.name==="AbortError") return; }
     [f1,f2].forEach((f,i)=>setTimeout(()=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(f); a.download=f.name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000); },i*400)); toast("Saved 2 spreadsheets"); }
+  if(a==="fu-cal"){ const c=cur(); if(c) addFollowUpToCalendar(c); return; }
+  if(a==="route-open"){ openRoute(); if(view==="map") fitRoute(); return; }
+  if(a==="route-build"){ buildRoute(); return; }
+  if(a==="route-edit"){ const r=routeToday(); draft.routeSel=new Set(r?r.ids:[]); draft.routeEdit=true; renderSheet(); return; }
+  if(a==="route-clear"){ localStorage.removeItem(ROUTE_KEY); closeSheet(); toast("Route cleared"); return; }
+  if(a==="route-me"){ locate(false); return; }
+  if(a==="route-all"){ draft.routeAll=true; renderSheet(); return; }
   if(a==="menu-open"){ sheet={type:"menu"}; draft={}; render(); }
   if(a==="sp-open"){ draft.spOpen=true; draft.spLine=draft.spLine||CATALOG[0].id; render(); }
   if(a==="sp-cancel"){ draft.spOpen=false; render(); }
@@ -1174,6 +1287,7 @@ $("#search").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefa
 $("#searchClear").addEventListener("click", ()=>{ const s=$("#search"); s.value=""; $("#searchClear").hidden=true; $("#results").hidden=true; s.focus(); });
 $("#btnLocate").addEventListener("click", ()=>locate(true));
 $("#btnNearby").addEventListener("click", findNearby);
+$("#btnRoute").addEventListener("click", ()=>{ openRoute(); fitRoute(); });
 document.addEventListener("pointerdown", e=>{ if(!e.target.closest(".topbar")) $("#results").hidden=true; });
 
 
@@ -1211,7 +1325,7 @@ function renderGuide(){
     <div class="gdots">${GUIDE.map((_,i)=>`<i class="${i===guideStep?"on":""}"></i>`).join("")}</div>
     <div class="gbtns">${guideStep?`<button class="btn" data-guide="back">Back</button>`:`<button class="btn ghost" data-guide="skip">Skip</button>`}<button class="btn primary" data-guide="${last?"done":"next"}">${last?"Let’s go":"Next"}</button></div>`;
 }
-function closeGuide(){ uni?.stop(); uni=null; $("#guide")?.remove(); lsSet("henrys.guided",1); }
+function closeGuide(){ uni?.stop(); uni=null; $("#guide")?.remove(); lsSet("henrys.guided",1); backupNag(); }
 document.addEventListener("click",e=>{ const b=e.target.closest("[data-guide]"); if(!b) return; const a=b.dataset.guide;
   if(a==="next"){ guideStep=Math.min(GUIDE.length-1,guideStep+1); renderGuide(); }
   if(a==="back"){ guideStep=Math.max(0,guideStep-1); renderGuide(); }
@@ -1221,17 +1335,48 @@ document.addEventListener("keydown",e=>{ if(!$("#guide")) return; if(e.key==="Ar
 
 /* ---------- backup ---------- */
 async function exportBackup(){
-  const data=JSON.stringify({app:"henrys-territory",version:1,exportedAt:new Date().toISOString(),shops:Store.all()},null,1);
-  const name=`henrys-backup-${new Date().toISOString().slice(0,10)}.json`; const file=new File([data],name,{type:"application/json"});
-  try{ if(navigator.canShare?.({files:[file]})){ await navigator.share({files:[file],title:"Henry's stores backup"}); return; } }catch(e){ if(e.name==="AbortError") return; }
-  const a=document.createElement("a"); a.href=URL.createObjectURL(file); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000); toast("Backup saved to Downloads");
+  const extra={}; ["henrys.goals","henrys.settings","henrys.menu","henrys.rep"].forEach(k=>{ const v=lsGet(k); if(v!=null) extra[k]=v; });
+  const data=JSON.stringify({app:"heat",version:2,exportedAt:new Date().toISOString(),shops:Store.all(),settings:extra},null,1);
+  const name=`heat-backup-${new Date().toISOString().slice(0,10)}.json`; const file=new File([data],name,{type:"application/json"});
+  try{ if(navigator.canShare?.({files:[file]})){ await navigator.share({files:[file],title:"HEAT backup"}); lsSet("henrys.backupAt",new Date().toISOString()); render(); toast("Backup saved"); return; } }catch(e){ if(e.name==="AbortError") return; }
+  const a=document.createElement("a"); a.href=URL.createObjectURL(file); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000); lsSet("henrys.backupAt",new Date().toISOString()); render(); toast("Backup saved to Downloads");
 }
 async function importBackup(f){
   try{ const j=JSON.parse(await f.text()); const inc=Array.isArray(j)?j:j.shops; if(!Array.isArray(inc)) throw 0;
     const byId=new Map(Store.all().map(c=>[c.id,c])); let added=0,updated=0;
     inc.forEach(c=>{ if(!c?.id||!c.name) return; const ex=byId.get(c.id); if(!ex){ byId.set(c.id,c); added++; } else if(Date.parse(c.updatedAt||0)>Date.parse(ex.updatedAt||0)){ byId.set(c.id,c); updated++; } });
-    Store.write([...byId.values()]); refresh(); toast(`Imported: ${added} new, ${updated} updated`);
-  }catch{ toast("That file isn't a Henry's backup."); }
+    if(j.settings&&typeof j.settings==="object") Object.entries(j.settings).forEach(([k,v])=>{ if(/^henrys\.(goals|settings|menu|rep)$/.test(k)) lsSet(k,v); });
+    Store.write([...byId.values()]); if(j.settings?.["henrys.menu"]) loadMenu(); refresh(); toast(`Imported: ${added} new, ${updated} updated`);
+  }catch{ toast("That file isn't a HEAT backup."); }
+}
+
+/* ---------- backup reminder ---------- */
+function lastBackupDays(){ const b=lsGet("henrys.backupAt"); return b?daysSince(b):null; }
+function backupDue(){
+  const firsts=shops.flatMap(c=>(c.touches||[]).map(t=>Date.parse(t.at))); if(!firsts.length) return false;
+  const b=lastBackupDays(); if(b!=null) return b>=7;
+  return (Date.now()-Math.min(...firsts))/864e5>=3;
+}
+function backupCard(){ if(!backupDue()) return ""; const b=lastBackupDays();
+  return `<div class="bkcard"><div><b>Back up your stores</b><small>${b==null?"You haven’t saved a backup yet.":`Last backup ${ago(b)}.`} Everything lives on this phone, so a backup keeps it safe.</small></div><button class="btn sm" data-act="export">Save backup</button></div>`; }
+function backupNag(){ if(!backupDue() || lsGet("henrys.backupNag")===todayISO()) return; lsSet("henrys.backupNag",todayISO());
+  setTimeout(()=>toast("Time to save a backup of your stores",{label:"Save",fn:exportBackup}),900); }
+
+/* ---------- follow-ups on the calendar ---------- */
+function icsEsc(s){ return String(s||"").replace(/\\/g,"\\\\").replace(/\n/g,"\\n").replace(/([,;])/g,"\\$1"); }
+function followUpICS(c){
+  const day=(c.nextFollowUp||"").slice(0,10).replace(/-/g,""); if(!day) return null; const i=infoOf(c), ph=bestPhone(c)||i.shopPhone||"";
+  const mv=nextMoves().find(m=>m.c.id===c.id), stamp=new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
+  const desc=[`${SNAME[c.stage||"new"]}${mv?" · "+mv.why:""}`, ph?`Call: ${ph}`:"", i.address?`${i.address}${i.city?", "+i.city:""}`:"", c.notes||""].filter(Boolean).join("\n");
+  return ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//HEAT//EN","CALSCALE:GREGORIAN","BEGIN:VEVENT",`UID:${c.id}-${day}@heat`,`DTSTAMP:${stamp}`,`DTSTART:${day}T100000`,`DTEND:${day}T103000`,
+    `SUMMARY:${icsEsc("Follow up: "+c.name)}`, i.address?`LOCATION:${icsEsc([i.address,i.city].filter(Boolean).join(", "))}`:"", `DESCRIPTION:${icsEsc(desc)}`,
+    "BEGIN:VALARM","TRIGGER:-PT30M","ACTION:DISPLAY",`DESCRIPTION:${icsEsc("Follow up: "+c.name)}`,"END:VALARM","END:VEVENT","END:VCALENDAR"].filter(Boolean).join("\r\n");
+}
+function addFollowUpToCalendar(c){
+  const ics=followUpICS(c); if(!ics){ toast("Pick a follow-up date first."); return; }
+  const url=URL.createObjectURL(new Blob([ics],{type:"text/calendar"})), a=document.createElement("a"); a.href=url;
+  if(!/iPhone|iPad|iPod/.test(navigator.userAgent) && !(navigator.maxTouchPoints>1 && /Macintosh/.test(navigator.userAgent))) a.download=`follow-up-${normName(c.name).slice(0,24)}.ics`;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },4000);
 }
 
 /* ---------- misc ---------- */
