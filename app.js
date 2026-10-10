@@ -1,5 +1,5 @@
 "use strict";
-const APP_V="20261010065530";
+const APP_V="20261010065643";
 /* Self-update: GitHub Pages caches the page for ~10 min; if a newer build is live, reload into it once. */
 (async()=>{ try{ const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"}); const j=await r.json(); if(j.v && j.v!==APP_V && sessionStorage.getItem("henrys.upd")!==j.v){ sessionStorage.setItem("henrys.upd",j.v); location.replace(location.pathname+"?u="+j.v); } }catch{} })();
 /* works with no signal: keep the app and the map on the phone */
@@ -225,23 +225,28 @@ async function initMap(){
   });
   ["pins","ghosts","zones-fill"].forEach(l=>{ map.on("mouseenter",l,()=>map.getCanvas().style.cursor="pointer"); map.on("mouseleave",l,()=>map.getCanvas().style.cursor=""); });
 }
-/* ---------- heat map: each store glows in its status color, neighbours blend ---------- */
-const HEAT_W=360, HEAT_H=320, HEAT_SIGMA_KM=5.5, HEAT_MAX=.42;
-const mercY=la=>Math.log(Math.tan(Math.PI/4+la*Math.PI/360)), invMercY=y=>(2*Math.atan(Math.exp(y))-Math.PI/2)*180/Math.PI;
-const hexRgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+/* ---------- heat map: each county is tinted by how its stores are doing, and the colors blend where counties meet ---------- */
+const HEAT_W=360, HEAT_H=320, HEAT_BLUR=9, HEAT_MAX=.30;
+const mercY=la=>Math.log(Math.tan(Math.PI/4+la*Math.PI/360));
 let heatKey="";
+function boxBlur(src,dst,w,h,r,horiz){ const n=horiz?w:h, m=horiz?h:w, k=2*r+1;
+  for(let a=0;a<m;a++){ let acc=[0,0,0,0]; const at=b=>{ const bb=Math.min(n-1,Math.max(0,b)); return (horiz?(a*w+bb):(bb*w+a))*4; };
+    for(let b=-r;b<=r;b++){ const o=at(b); for(let c=0;c<4;c++) acc[c]+=src[o+c]; }
+    for(let b=0;b<n;b++){ const o=(horiz?(a*w+b):(b*w+a))*4; for(let c=0;c<4;c++) dst[o+c]=acc[c]/k; const add=at(b+r+1), sub=at(b-r); for(let c=0;c<4;c++) acc[c]+=src[add+c]-src[sub+c]; } } }
 function heatField(){
   const [W,S,E,N]=BAY_BBOX, yN=mercY(N), yS=mercY(S);
-  const pts=shops.filter(c=>c.lat!=null).map(c=>({lat:c.lat,lon:c.lon,rgb:hexRgb(COLORS[health(c,cat).lv]||COLORS.n)}));
-  const key=cat+"|"+pts.map(p=>p.lat.toFixed(4)+p.lon.toFixed(4)+p.rgb.join("")).join(";");
+  const zc=ZINFO.map(z=>{ const s=zoneSummary(z.id,cat); return {z, col:s.list.length?COLORS[s.lv]:null}; });
+  const key=cat+"|"+zc.map(x=>x.col||"-").join("");
   if(key===heatKey) return null; heatKey=key;
-  const cv=document.createElement("canvas"); cv.width=HEAT_W; cv.height=HEAT_H; const ctx=cv.getContext("2d"), img=ctx.createImageData(HEAT_W,HEAT_H), d=img.data;
-  const s2=2*HEAT_SIGMA_KM*HEAT_SIGMA_KM;
-  for(let j=0;j<HEAT_H;j++){ const la=invMercY(yN+(yS-yN)*(j+.5)/HEAT_H), kx=111.32*Math.cos(la*Math.PI/180);
-    for(let i=0;i<HEAT_W;i++){ const lo=W+(E-W)*(i+.5)/HEAT_W; let sw=0,r=0,g=0,b=0;
-      for(const p of pts){ const dx=(lo-p.lon)*kx, dy=(la-p.lat)*110.57, w=Math.exp(-(dx*dx+dy*dy)/s2); if(w<1e-4) continue; sw+=w; r+=w*p.rgb[0]; g+=w*p.rgb[1]; b+=w*p.rgb[2]; }
-      const o=(j*HEAT_W+i)*4; if(sw<1e-4){ d[o+3]=0; continue; }
-      d[o]=r/sw; d[o+1]=g/sw; d[o+2]=b/sw; d[o+3]=255*HEAT_MAX*(1-Math.exp(-sw*1.6)); } }
+  const cv=document.createElement("canvas"); cv.width=HEAT_W; cv.height=HEAT_H; const ctx=cv.getContext("2d");
+  const X=lo=>(lo-W)/(E-W)*HEAT_W, Y=la=>(mercY(la)-yN)/(yS-yN)*HEAT_H;
+  zc.forEach(({z,col})=>{ if(!col) return; ctx.fillStyle=col; ctx.beginPath(); z.polys.forEach(poly=>poly.forEach(ring=>{ ring.forEach(([lo,la],i)=>i?ctx.lineTo(X(lo),Y(la)):ctx.moveTo(X(lo),Y(la))); ctx.closePath(); })); ctx.fill("evenodd"); });
+  // blur with color weighted by coverage, so neighbouring counties fade into each other and the outer edge fades to clear
+  const img=ctx.getImageData(0,0,HEAT_W,HEAT_H), d=img.data, n=d.length;
+  let A=new Float32Array(n), B=new Float32Array(n);
+  for(let o=0;o<n;o+=4){ const a=d[o+3]/255; A[o]=d[o]*a; A[o+1]=d[o+1]*a; A[o+2]=d[o+2]*a; A[o+3]=a; }
+  for(let pass=0;pass<3;pass++){ boxBlur(A,B,HEAT_W,HEAT_H,HEAT_BLUR,true); boxBlur(B,A,HEAT_W,HEAT_H,HEAT_BLUR,false); }
+  for(let o=0;o<n;o+=4){ const a=A[o+3]; if(a<.003){ d[o+3]=0; continue; } d[o]=A[o]/a; d[o+1]=A[o+1]/a; d[o+2]=A[o+2]/a; d[o+3]=255*HEAT_MAX*Math.min(1,a*1.15); }
   ctx.putImageData(img,0,0); return cv.toDataURL("image/png");
 }
 const heatCoords=()=>{ const [W,S,E,N]=BAY_BBOX; return [[W,N],[E,N],[E,S],[W,S]]; };
