@@ -1,5 +1,5 @@
 "use strict";
-const APP_V="20261010052908";
+const APP_V="20261010053153";
 /* Self-update: GitHub Pages caches the page for ~10 min; if a newer build is live, reload into it once. */
 (async()=>{ try{ const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"}); const j=await r.json(); if(j.v && j.v!==APP_V && sessionStorage.getItem("henrys.upd")!==j.v){ sessionStorage.setItem("henrys.upd",j.v); location.replace(location.pathname+"?u="+j.v); } }catch{} })();
 /* =========================================================================
@@ -1032,7 +1032,7 @@ document.addEventListener("click", async ev=>{
   const d=t.dataset;
   if(d.report){ rpBack = view==="report" ? rpBack : view; view="report"; $("#results").hidden=true; sheet=null; render(); $("#page").scrollTop=0; return; }
   if(d.rp){ rpPeriod=d.rp; render(); return; }
-  if(d.view){ view=d.view; remember(); $("#results").hidden=true; if(sheet && sheet.type!=="shop") sheet=null; render(); if(view==="map") setTimeout(()=>map?.resize(),0); return; }
+  if(d.view){ const same=view===d.view; view=d.view; remember(); $("#results").hidden=true; document.activeElement?.blur?.(); if(sheet){ sheet=null; draft={}; } if(!same){ selectMode=false; selected.clear(); } render(); updateMapData(); if(same) $("#page").scrollTo({top:0,behavior:"smooth"}); if(view==="map") setTimeout(()=>map?.resize(),0); return; }
   if(d.cat){ cat=d.cat; remember(); render(); updateMapData(); return; }
   if(d.mline){ draft.menuOpen = draft.menuOpen===d.mline ? null : d.mline; render(); return; }
   if(d.mdel!=null){ const L=LINE[draft.menuOpen]; const st=L.strains[+d.mdel]; L.strains.splice(+d.mdel,1); delete L.sale[st]; saveMenu(); render(); return; }

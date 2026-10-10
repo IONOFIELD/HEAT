@@ -68,7 +68,7 @@ a{color:var(--violet-2)}
 /* ---------- tab bar ---------- */
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr);border-radius:0;border-width:1px 0 0;padding-bottom:var(--sab);box-shadow:none}
 .tabbar::before{content:"";position:absolute;left:0;right:0;top:-1px;height:1px;background:var(--rainbow);opacity:.45}
-.tabbar button{position:relative;border:0;background:none;height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:600;color:var(--faint)}
+.tabbar button{touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer;position:relative;border:0;background:none;height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:600;color:var(--faint)}
 .tabbar button svg{width:25px;height:25px}
 .tabbar button[aria-current="true"]{color:var(--violet-2)}
 .badge{position:absolute;top:5px;left:calc(50% + 7px);min-width:18px;height:18px;border-radius:9px;background:var(--r);color:#fff;font:700 11px/18px var(--font);padding:0 5px}
