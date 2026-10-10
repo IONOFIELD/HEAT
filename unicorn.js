@@ -293,12 +293,6 @@
       const wA=sm(4.0,4.5,Z), bA=1-sm(4.3,4.7,Z);
       if(wA>0){ ctx.globalAlpha=wA; land(E.world,"#3d8a6a"); }
       if(bA>0){ ctx.globalAlpha=bA; land(E.bay,"#3f8f6c");
-        const zc=sm(3.3,3.7,Z)*(1-sm(4.3,4.6,Z)); if(zc>0 && window.ZONES){   // color each county the way the app does
-          ctx.save(); ctx.beginPath(); E.bay.forEach(r=>{ r.forEach(([lo,la],i)=>{ const [x,y]=proj(lo,la,Rg); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.closePath(); }); ctx.clip("evenodd");
-          // land stays green; each county gets a faint sheen of its stores' color
-          ctx.globalAlpha=zc*.24; window.ZONES.features.forEach(f=>{ ctx.fillStyle=DEMO_COL[DEMO_LV[f.properties.name]||"n"]; const P=f.geometry.type==="Polygon"?[f.geometry.coordinates]:f.geometry.coordinates;
-            ctx.beginPath(); P.forEach(p=>p.forEach(ring=>{ ring.forEach(([lo,la],i)=>{ const [x,y]=proj(lo,la,Rg); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.closePath(); })); ctx.fill("evenodd"); });
-          ctx.restore(); ctx.globalAlpha=bA; }
         const zl=sm(3.4,3.8,Z)*(1-sm(4.3,4.6,Z)); if(zl>0 && window.ZONES){ ctx.globalAlpha=zl*.5; ctx.strokeStyle="#c4b5fd"; ctx.lineWidth=1; window.ZONES.features.forEach(f=>{ const P=f.geometry.type==="Polygon"?[f.geometry.coordinates]:f.geometry.coordinates; P.forEach(p=>{ ctx.beginPath(); p[0].forEach(([lo,la],i)=>{ const [x,y]=proj(lo,la,Rg); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke(); }); }); }
         const sd=sm(3.3,3.8,Z)*(1-sm(4.4,4.8,Z)); if(sd>0 && window.HENRYS_RETAILERS){ ctx.globalAlpha=sd; window.HENRYS_RETAILERS.forEach(r=>{ const [x,y,v]=proj(r.lon,r.lat,Rg); if(!v) return; ctx.fillStyle=DEMO_DOT[DEMO_LV[zoneName(r.lon,r.lat)]||"n"]; ctx.beginPath(); ctx.arc(x,y,Math.max(2.2,cw/130),0,TAU); ctx.fill(); ctx.strokeStyle="rgba(255,255,255,.85)"; ctx.lineWidth=Math.max(1,cw/500); ctx.stroke(); }); } }
       ctx.globalAlpha=1;

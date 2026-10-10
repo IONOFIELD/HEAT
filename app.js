@@ -1,5 +1,5 @@
 "use strict";
-const APP_V="20261010065221";
+const APP_V="20261010065530";
 /* Self-update: GitHub Pages caches the page for ~10 min; if a newer build is live, reload into it once. */
 (async()=>{ try{ const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"}); const j=await r.json(); if(j.v && j.v!==APP_V && sessionStorage.getItem("henrys.upd")!==j.v){ sessionStorage.setItem("henrys.upd",j.v); location.replace(location.pathname+"?u="+j.v); } }catch{} })();
 /* works with no signal: keep the app and the map on the phone */
@@ -196,8 +196,10 @@ async function initMap(){
     map.addSource("ghosts",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
     map.addSource("me",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
     map.addSource("route",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-    map.addLayer({id:"zones-fill",type:"fill",source:"zones",paint:{"fill-color":["get","color"],"fill-opacity":["interpolate",["linear"],["zoom"],7,.13,10,.08,13,.025]}}, firstSym);
-    map.addLayer({id:"zones-line",type:"line",source:"zones",paint:{"line-color":["get","color"],"line-width":["case",["get","sel"],3,1.2],"line-opacity":["interpolate",["linear"],["zoom"],7,.75,13,.25]}}, firstSym);
+    heatKey=""; map.addSource("heat",{type:"image",url:heatField(),coordinates:heatCoords()});
+    map.addLayer({id:"heat",type:"raster",source:"heat",paint:{"raster-opacity":["interpolate",["linear"],["zoom"],7,1,11,.8,14,.55,16,.4],"raster-resampling":"linear","raster-fade-duration":0}}, firstSym);
+    map.addLayer({id:"zones-fill",type:"fill",source:"zones",paint:{"fill-color":"#000","fill-opacity":0}}, firstSym);
+    map.addLayer({id:"zones-line",type:"line",source:"zones",paint:{"line-color":["case",["get","sel"],"#e9e2ff","#c4b5fd"],"line-width":["case",["get","sel"],2.5,.8],"line-opacity":["case",["get","sel"],.9,["interpolate",["linear"],["zoom"],7,.35,13,.12]]}}, firstSym);
     map.addLayer({id:"zones-label",type:"symbol",source:"zlabels",maxzoom:10,layout:{"text-field":["get","label"],"text-font":["Noto Sans Bold"],"text-size":13,"text-max-width":9},paint:{"text-color":"#ffffff","text-halo-color":"#140f27","text-halo-width":1.6}});
     map.addLayer({id:"route-line",type:"line",source:"route",filter:["==",["geometry-type"],"LineString"],layout:{"line-join":"round","line-cap":"round"},paint:{"line-color":"#c4b5fd","line-width":3,"line-opacity":.85,"line-dasharray":[1.5,1.5]}});
     map.addLayer({id:"me-halo",type:"circle",source:"me",paint:{"circle-radius":18,"circle-color":"#60a5fa","circle-opacity":.18}});
@@ -223,6 +225,27 @@ async function initMap(){
   });
   ["pins","ghosts","zones-fill"].forEach(l=>{ map.on("mouseenter",l,()=>map.getCanvas().style.cursor="pointer"); map.on("mouseleave",l,()=>map.getCanvas().style.cursor=""); });
 }
+/* ---------- heat map: each store glows in its status color, neighbours blend ---------- */
+const HEAT_W=360, HEAT_H=320, HEAT_SIGMA_KM=5.5, HEAT_MAX=.42;
+const mercY=la=>Math.log(Math.tan(Math.PI/4+la*Math.PI/360)), invMercY=y=>(2*Math.atan(Math.exp(y))-Math.PI/2)*180/Math.PI;
+const hexRgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+let heatKey="";
+function heatField(){
+  const [W,S,E,N]=BAY_BBOX, yN=mercY(N), yS=mercY(S);
+  const pts=shops.filter(c=>c.lat!=null).map(c=>({lat:c.lat,lon:c.lon,rgb:hexRgb(COLORS[health(c,cat).lv]||COLORS.n)}));
+  const key=cat+"|"+pts.map(p=>p.lat.toFixed(4)+p.lon.toFixed(4)+p.rgb.join("")).join(";");
+  if(key===heatKey) return null; heatKey=key;
+  const cv=document.createElement("canvas"); cv.width=HEAT_W; cv.height=HEAT_H; const ctx=cv.getContext("2d"), img=ctx.createImageData(HEAT_W,HEAT_H), d=img.data;
+  const s2=2*HEAT_SIGMA_KM*HEAT_SIGMA_KM;
+  for(let j=0;j<HEAT_H;j++){ const la=invMercY(yN+(yS-yN)*(j+.5)/HEAT_H), kx=111.32*Math.cos(la*Math.PI/180);
+    for(let i=0;i<HEAT_W;i++){ const lo=W+(E-W)*(i+.5)/HEAT_W; let sw=0,r=0,g=0,b=0;
+      for(const p of pts){ const dx=(lo-p.lon)*kx, dy=(la-p.lat)*110.57, w=Math.exp(-(dx*dx+dy*dy)/s2); if(w<1e-4) continue; sw+=w; r+=w*p.rgb[0]; g+=w*p.rgb[1]; b+=w*p.rgb[2]; }
+      const o=(j*HEAT_W+i)*4; if(sw<1e-4){ d[o+3]=0; continue; }
+      d[o]=r/sw; d[o+1]=g/sw; d[o+2]=b/sw; d[o+3]=255*HEAT_MAX*(1-Math.exp(-sw*1.6)); } }
+  ctx.putImageData(img,0,0); return cv.toDataURL("image/png");
+}
+const heatCoords=()=>{ const [W,S,E,N]=BAY_BBOX; return [[W,N],[E,N],[E,S],[W,S]]; };
+function updateHeat(){ if(!mapReady) return; const url=heatField(); if(!url) return; const src=map.getSource("heat"); if(src) src.updateImage({url, coordinates:heatCoords()}); }
 function updateMapData(){
   if(!mapReady) return;
   const selZone = sheet?.type==="zone" ? sheet.id : null, selShop = (sheet?.type==="shop"||sheet?.type==="quick") ? sheet.id : null;
@@ -233,7 +256,7 @@ function updateMapData(){
     z.polys.forEach(p=>zf.push({type:"Feature",properties:{id:z.id,color,sel:z.id===selZone},geometry:{type:"Polygon",coordinates:p}}));
     zl.push({type:"Feature",properties:{label:`${z.label.split(" · ").pop()}${s.list.length?"\n"+s.list.length+" store"+(s.list.length>1?"s":""):""}`},geometry:{type:"Point",coordinates:z.center}});
   });
-  map.getSource("zones").setData({type:"FeatureCollection",features:zf});
+  map.getSource("zones").setData({type:"FeatureCollection",features:zf}); updateHeat();
   map.getSource("zlabels").setData({type:"FeatureCollection",features:zl});
   map.getSource("pins").setData({type:"FeatureCollection",features:shops.filter(c=>c.lat!=null).map(c=>({type:"Feature",properties:{id:c.id,name:c.name,color:COLORS[health(c,cat).lv],sel:c.id===selShop},geometry:{type:"Point",coordinates:[c.lon,c.lat]}}))});
   map.getSource("ghosts").setData({type:"FeatureCollection",features:ghosts.filter(g=>!onList(g)).map(g=>({type:"Feature",properties:{osm:g.osm,name:g.name},geometry:{type:"Point",coordinates:[g.lon,g.lat]}}))});
