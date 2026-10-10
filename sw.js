@@ -28,7 +28,11 @@ self.addEventListener("fetch", e => {
   const req = e.request; if (req.method !== "GET") return;
   const u = new URL(req.url);
   if (isLive(u)) return;                                   // always live
-  if (isMap(u)) {                                          // saved copy first, refresh behind it
+  if (isMap(u) && !/\.pbf$|\/fonts\/|\/sprites\//.test(u.pathname)) {   // map style and tile index: fresh first, saved copy with no signal
+    e.respondWith(fetch(req).then(r => { if (r.ok) { const cp = r.clone(); caches.open(MAP).then(c => c.put(req, cp)); } return r; }).catch(() => caches.match(req)));
+    return;
+  }
+  if (isMap(u)) {                                          // tiles, fonts, icons: saved copy first, refresh behind it
     e.respondWith(caches.open(MAP).then(async c => {
       const hit = await c.match(req);
       const net = fetch(req).then(r => { if (r.ok) { c.put(req, r.clone()); trimMap(); } return r; }).catch(() => hit);

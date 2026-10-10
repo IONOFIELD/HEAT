@@ -1,5 +1,5 @@
 "use strict";
-const APP_V="20261010061304";
+const APP_V="20261010061651";
 /* Self-update: GitHub Pages caches the page for ~10 min; if a newer build is live, reload into it once. */
 (async()=>{ try{ const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"}); const j=await r.json(); if(j.v && j.v!==APP_V && sessionStorage.getItem("henrys.upd")!==j.v){ sessionStorage.setItem("henrys.upd",j.v); location.replace(location.pathname+"?u="+j.v); } }catch{} })();
 /* works with no signal: keep the app and the map on the phone */
@@ -741,7 +741,10 @@ function touchedToday(c){ return (c.touches||[]).some(t=>ACTIVE.includes(t.type)
 const apple=(c)=>`https://maps.apple.com/?daddr=${c.lat},${c.lon}&q=${encodeURIComponent(c.name)}`;
 const gmPlace=(c)=>{ const i=infoOf(c); return i.address ? [c.name, i.address, i.city||"", "CA"].filter(Boolean).join(", ") : `${c.lat},${c.lon}`; };
 function orderStops(start, list){
-  const D=(a,b)=>miles(a,b)||0, pts=list.slice(), out=[]; let cur=start;
+  // straight-line miles, but moving between counties (on the Bay that usually means a bridge) costs extra,
+  // so the route finishes one area before heading to the next
+  const zn=new Map(), zOf=p=>{ if(!zn.has(p)) zn.set(p, p.zone ?? (typeof zoneOf==="function" ? zoneOf(p.lat,p.lon) : null)); return zn.get(p); };
+  const D=(a,b)=>{ const m=miles(a,b)||0, x=zOf(a)!==zOf(b); return x ? m*1.35+4 : m; }, pts=list.slice(), out=[]; let cur=start;
   if(!cur){ out.push(pts.shift()); cur=out[0]; }
   while(pts.length){ let bi=0,bd=1e9; pts.forEach((p,i)=>{ const d=D(cur,p); if(d<bd){ bd=d; bi=i; } }); cur=pts.splice(bi,1)[0]; out.push(cur); }
   const P=start?[start,...out]:out, n=P.length; let better=true, guard=0;
