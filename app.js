@@ -1,5 +1,5 @@
 "use strict";
-const APP_V="20261010053510";
+const APP_V="20261010054146";
 /* Self-update: GitHub Pages caches the page for ~10 min; if a newer build is live, reload into it once. */
 (async()=>{ try{ const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"}); const j=await r.json(); if(j.v && j.v!==APP_V && sessionStorage.getItem("henrys.upd")!==j.v){ sessionStorage.setItem("henrys.upd",j.v); location.replace(location.pathname+"?u="+j.v); } }catch{} })();
 /* =========================================================================
@@ -541,7 +541,7 @@ function viewToday(){
   const hr=new Date().getHours(), greet=hr<12?"Good morning":hr<17?"Good afternoon":"Good evening";
   const sec=(t,s,arr,rf,empty)=>`<section class="section"><div class="section-head"><h2>${t}</h2><span class="sub" style="font-size:13px">${s}</span></div><div class="group">${arr.length?arr.map(c=>shopRow(c,"all",rf(c))).join(""):`<div class="empty">${empty}</div>`}</div></section>`;
   if(!shops.length) return head(`${greet}${repFirst()?", "+esc(repFirst()):""}`)+`<p class="sub">No stores yet. Head to the Map tab to add your first one.</p>`;
-  return head(`${greet}${repFirst()?", "+esc(repFirst()):""}`, `<p class="sub" style="margin:0">${new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})}</p>`)+momentumRow()+nextUpCard()+goalCard()+`
+  return head(`${greet}${repFirst()?", "+esc(repFirst()):""}`, `<p class="sub" style="margin:0">${new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})}</p>`)+momentumRow()+goalCard()+`
   <div class="stats">
     <div class="stat ${closing.length?"alert":""}"><b>${closing.length}</b><span>deals to close</span></div>
     <div class="stat ${due.length?"alert":""}"><b>${due.length}</b><span>follow-ups due</span></div>
@@ -566,7 +566,7 @@ function viewPipeline(){
     return `<section class="stage ${hot?"hot":""}"><div class="stage-h"><h3>${l}</h3><span class="num">${arr.length}${tot?` · ${money(tot)}`:""}${k==="new"?` · <button class="linkbtn" data-pipe="new">Hide</button>`:""}</span></div>
       <div class="stage-list">${arr.map(c=>{const h=health(c);const t=dealTotal(c.deal?.items);return `<button class="card lv-${h.lv}" data-open="${c.id}"><b>${esc(c.name)}</b><small class="num">${esc(infoOf(c).city||"")} · in stage ${ago(daysSince(c.stageAt)).replace(" ago","")}${t?` · ${money(t)}`:""}</small>${h.lv!=="g"&&h.lv!=="n"?`<small style="color:var(--fg)">${esc(h.reasons[0])}</small>`:""}</button>`;}).join("")}</div></section>`; }).join("");
   const open=shops.filter(c=>["negotiating","verbal","confirmed"].includes(c.stage)).reduce((t,c)=>t+dealTotal(c.deal?.items),0);
-  return head("Deal pipeline", `<p class="sub" style="margin:4px 0 14px">${open?`<b style="color:var(--fg)">${money(open)}</b> in open deals. `:""}Deals leak between <b>Verbal yes</b> and <b>Ordered</b>: a verbal yes turns red after 2 days with no confirmation email, a confirmed deal after 4 days with no order.</p>`)+`<div class="board">${secs}</div>`;
+  return head("Deal pipeline", `<p class="sub" style="margin:4px 0 14px">${open?`<b style="color:var(--fg)">${money(open)}</b> in open deals. `:""}Deals leak between <b>Verbal yes</b> and <b>Ordered</b>: a verbal yes turns red after 2 days with no confirmation email, a confirmed deal after 4 days with no order.</p>`)+nextUpCard()+`<div class="board">${secs}</div>`;
 }
 
 function viewStores(){
