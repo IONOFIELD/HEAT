@@ -1,5 +1,5 @@
 "use strict";
-const APP_V="20261010070620";
+const APP_V="20261010160033";
 /* Self-update: GitHub Pages caches the page for ~10 min; if a newer build is live, reload into it once. */
 (async()=>{ try{ const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"}); const j=await r.json(); if(j.v && j.v!==APP_V && sessionStorage.getItem("henrys.upd")!==j.v){ sessionStorage.setItem("henrys.upd",j.v); location.replace(location.pathname+"?u="+j.v); } }catch{} })();
 /* works with no signal: keep the app and the map on the phone */
@@ -134,7 +134,7 @@ function health(c, cat="all"){
 function orderStatus(c){ const od=daysSince(c.lastOrderAt); if(od!=null&&od<=30&&c.stage!=="lost") return "placed"; if(["negotiating","verbal","confirmed"].includes(c.stage)) return "pending"; return "absent"; }
 function zoneSummary(zid, cat){
   const list=shops.filter(c=>c.zone===zid); const cnt={g:0,y:0,r:0,n:0}; list.forEach(c=>cnt[health(c,cat).lv]++);
-  const scored=cnt.g+cnt.y+cnt.r; let lv="n"; if(scored){ const s=(2*cnt.r+cnt.y)/(2*scored); lv=s<.25?"g":s<.5?"y":"r"; }
+  const scored=cnt.g+cnt.y+cnt.r; let lv="n"; if(scored){ const s=(2*cnt.r+cnt.y)/(2*scored); lv=s<.25?"g":s<=.5?"y":"r"; }
   const ord={placed:0,pending:0,absent:0}; list.forEach(c=>ord[orderStatus(c)]++);
   return {list,cnt,lv,ord};
 }
@@ -227,7 +227,7 @@ async function initMap(){
 }
 /* ---------- heat map: each county is tinted by how its stores are doing, and the colors blend where counties meet ---------- */
 const HEAT_W=360, HEAT_H=320, HEAT_BLUR=9, HEAT_MAX=.30;
-const mercY=la=>Math.log(Math.tan(Math.PI/4+la*Math.PI/360));
+const mercY=la=>Math.log(Math.tan(Math.PI/4+la*Math.PI/360)), hexRgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
 let heatKey="";
 function boxBlur(src,dst,w,h,r,horiz){ const n=horiz?w:h, m=horiz?h:w, k=2*r+1;
   for(let a=0;a<m;a++){ let acc=[0,0,0,0]; const at=b=>{ const bb=Math.min(n-1,Math.max(0,b)); return (horiz?(a*w+bb):(bb*w+a))*4; };
@@ -235,7 +235,9 @@ function boxBlur(src,dst,w,h,r,horiz){ const n=horiz?w:h, m=horiz?h:w, k=2*r+1;
     for(let b=0;b<n;b++){ const o=(horiz?(a*w+b):(b*w+a))*4; for(let c=0;c<4;c++) dst[o+c]=acc[c]/k; const add=at(b+r+1), sub=at(b-r); for(let c=0;c<4;c++) acc[c]+=src[add+c]-src[sub+c]; } } }
 function heatField(){
   const [W,S,E,N]=BAY_BBOX, yN=mercY(N), yS=mercY(S);
-  const zc=ZINFO.map(z=>{ const s=zoneSummary(z.id,cat); return {z, col:s.list.length?COLORS[s.lv]:null}; });
+  // each county's tint is the average of its stores' colors, so a mostly-green county with one problem leans green with a hint of red
+  const mix=list=>{ const sc=list.map(c=>health(c,cat).lv).filter(l=>l!=="n"); if(!sc.length) return null; const rgb=[0,0,0]; sc.forEach(l=>hexRgb(COLORS[l]).forEach((v,i)=>rgb[i]+=v/sc.length)); return "#"+rgb.map(v=>Math.round(v).toString(16).padStart(2,"0")).join(""); };
+  const zc=ZINFO.map(z=>({z, col:mix(shops.filter(c=>c.zone===z.id))}));
   const key=cat+"|"+zc.map(x=>x.col||"-").join("");
   if(key===heatKey) return null; heatKey=key;
   const cv=document.createElement("canvas"); cv.width=HEAT_W; cv.height=HEAT_H; const ctx=cv.getContext("2d");
