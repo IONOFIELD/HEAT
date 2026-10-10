@@ -35,7 +35,7 @@ a{color:var(--violet-2)}
 #mapUi>*{pointer-events:auto}
 .topbar{position:absolute;left:0;right:0;top:0;padding:calc(var(--sat) + 10px) 12px 0;display:grid;gap:8px;pointer-events:none}
 .topbar>*{pointer-events:auto}
-@media (min-width:900px){.topbar{left:auto;width:420px;right:auto;left:12px}}
+@media (min-width:900px){html:not(.phone) .topbar{left:auto;width:420px;right:auto;left:12px}}
 .searchwrap{display:flex;align-items:center;gap:8px;border-radius:var(--r-md);padding:0 6px 0 12px;height:48px}
 .searchwrap .sicon{width:20px;height:20px;color:var(--muted);flex:none}
 .searchwrap input{flex:1;min-width:0;height:100%;border:0;background:none;font-size:17px;outline:none}
@@ -72,8 +72,7 @@ a{color:var(--violet-2)}
 .tabbar button svg{width:25px;height:25px}
 .tabbar button[aria-current="true"]{color:var(--violet-2)}
 .badge{position:absolute;top:5px;left:calc(50% + 7px);min-width:18px;height:18px;border-radius:9px;background:var(--r);color:#fff;font:700 11px/18px var(--font);padding:0 5px}
-@media (min-width:900px){.tabbar{left:50%;right:auto;transform:translateX(-50%);bottom:12px;width:420px;border-radius:22px;border-width:1px;padding-bottom:0}.tabbar::before{left:20px;right:20px}
-  .fabs{bottom:84px}.maplibregl-ctrl-bottom-right{bottom:0!important}}
+@media (min-width:900px){html:not(.phone) .tabbar{left:50%;right:auto;transform:translateX(-50%);bottom:12px;width:420px;border-radius:22px;border-width:1px;padding-bottom:0}html:not(.phone) .tabbar::before{left:20px;right:20px}html:not(.phone) .fabs{bottom:84px}html:not(.phone) .maplibregl-ctrl-bottom-right{bottom:0!important}}
 
 /* ---------- full pages (Today / Pipeline / Stores) ---------- */
 #page{position:fixed;inset:0;z-index:10;overflow-y:auto;-webkit-overflow-scrolling:touch;background:radial-gradient(80% 50% at 10% 0%,rgb(124 77 255 / .22),transparent 70%),radial-gradient(60% 40% at 100% 20%,rgb(255 154 60 / .08),transparent 70%),var(--bg)}
@@ -86,7 +85,7 @@ h2{font:700 13px var(--font);letter-spacing:.06em;text-transform:uppercase;color
 .section{margin-top:26px}
 .section-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:0 4px 8px}
 .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px}
-@media (min-width:640px){.stats{grid-template-columns:repeat(4,1fr)}}
+@media (min-width:640px){html:not(.phone) .stats{grid-template-columns:repeat(4,1fr)}}
 .stat{background:var(--panel-solid);border:1px solid var(--line);border-radius:var(--r-md);padding:12px 14px}
 .stat b{display:block;font:700 30px/1.05 var(--font-d);font-variant-numeric:tabular-nums}
 .stat b small{font-size:17px;color:var(--muted);font-weight:600}
@@ -129,7 +128,7 @@ h2{font:700 13px var(--font);letter-spacing:.06em;text-transform:uppercase;color
 .stage.hot .stage-h h3{color:var(--y)}
 .stage-h span{font-size:13px;color:var(--muted)}
 .stage-list{display:grid;gap:8px}
-@media (min-width:640px){.stage-list{grid-template-columns:1fr 1fr}}
+@media (min-width:640px){html:not(.phone) .stage-list{grid-template-columns:1fr 1fr}}
 .stage.empty{display:flex;justify-content:space-between;padding:10px 14px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);background:transparent;border-style:dashed}
 .card{display:block;width:100%;text-align:left;border:1px solid var(--line);border-left:3px solid var(--c);background:var(--panel-2);border-radius:10px;padding:10px 12px}
 .card b{display:block;font-weight:600;font-size:15px}
@@ -144,9 +143,9 @@ h2{font:700 13px var(--font);letter-spacing:.06em;text-transform:uppercase;color
   background:linear-gradient(180deg,#221a40,#191231 120px);
   border-radius:var(--r-lg) var(--r-lg) 0 0;border:1px solid var(--line-2);border-bottom:0;box-shadow:0 -12px 40px rgb(0 0 0 / .45);transition:transform .25s cubic-bezier(.2,.8,.2,1)}
 .sheet::before{content:"";position:absolute;left:24px;right:24px;top:-1px;height:1px;background:var(--rainbow);opacity:.6}
-@media (min-width:900px){.sheet{left:auto;right:12px;top:12px;bottom:12px;max-height:none;width:440px;border-radius:var(--r-lg);border-bottom:1px solid var(--line-2)}}
+@media (min-width:900px){html:not(.phone) .sheet{left:auto;right:12px;top:12px;bottom:12px;max-height:none;width:440px;border-radius:var(--r-lg);border-bottom:1px solid var(--line-2)}}
 .sheet.peek{max-height:56%}
-@media (min-width:900px){.sheet.peek{max-height:none}}
+@media (min-width:900px){html:not(.phone) .sheet.peek{max-height:none}}
 .grab{height:26px;display:grid;place-items:center;flex:none;touch-action:none;cursor:grab}
 .grab::before{content:"";width:38px;height:5px;border-radius:3px;background:var(--line-2)}
 .sheet-head{padding:0 16px 10px;display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex:none}
@@ -198,7 +197,7 @@ select option,select optgroup{background:#1a1432;color:var(--fg)}
 .citygrp{margin-top:16px}
 .citygrp h2{margin:0 4px 8px}
 .welcome{position:fixed;z-index:6;left:12px;right:12px;bottom:calc(84px + var(--sab));border-radius:var(--r-lg);padding:18px}
-@media (min-width:900px){.welcome{left:12px;right:auto;width:420px;bottom:24px}}
+@media (min-width:900px){html:not(.phone) .welcome{left:12px;right:auto;width:420px;bottom:24px}}
 .welcome h1{font-size:22px}
 .welcome p{margin:6px 0 14px;color:var(--muted);font-size:15px}
 .welcome .row2{display:flex;gap:8px;flex-wrap:wrap}
@@ -232,12 +231,12 @@ select option,select optgroup{background:#1a1432;color:var(--fg)}
 #guide{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-end;justify-content:center;padding:16px 12px calc(16px + var(--sab));
   background:radial-gradient(70% 45% at 50% 30%,rgb(124 77 255 / .35),transparent 70%),rgb(8 4 22 / .72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 @media (min-height:700px){#guide{align-items:center}}
-.guide-card{position:relative;flex:0 1 400px;min-width:0;width:100%;max-width:400px;border-radius:26px;padding:0 20px 20px;overflow:hidden;background:linear-gradient(180deg,#241a46,#17112f);border:1px solid var(--line-2);box-shadow:0 30px 80px rgb(0 0 0 / .55)}
+.guide-card{position:relative;flex:0 1 460px;min-width:0;width:100%;max-width:460px;border-radius:26px;padding:0 20px 20px;overflow:hidden;background:linear-gradient(180deg,#241a46,#17112f);border:1px solid var(--line-2);box-shadow:0 30px 80px rgb(0 0 0 / .55)}
 .guide-card::before{content:"";position:absolute;left:28px;right:28px;top:-1px;height:1.5px;background:var(--rainbow)}
-#uniWrap{margin:0 -20px;height:230px;position:relative;overflow:hidden;border-radius:26px 26px 0 0;background:radial-gradient(80% 90% at 70% 0%,rgb(124 77 255 / .25),transparent)}
+#uniWrap{margin:0 -20px;height:270px;position:relative;overflow:hidden;border-radius:26px 26px 0 0;background:radial-gradient(80% 90% at 70% 0%,rgb(124 77 255 / .25),transparent)}
 #uniCanvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .uni-id{position:absolute;top:14px;right:18px;font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--faint)}
-.guide-card h1{font-size:26px;margin:4px 0 8px}
+.guide-card h1{font-size:28px;margin:4px 0 8px}
 .guide-card p{font-size:18px;line-height:1.45;color:#ddd6f5;margin:0;min-height:5.8em}
 .gc{font-weight:700}.gc.g{color:var(--g)}.gc.y{color:var(--y)}.gc.r{color:var(--r)}.gc.n{color:#b9b3d6}
 .gdots{display:flex;gap:6px;justify-content:center;margin:16px 0}
@@ -354,3 +353,10 @@ select option,select optgroup{background:#1a1432;color:var(--fg)}
 .rptable.stores td:first-child b{display:block;font-size:14px}.rptable.stores td:first-child small{color:var(--muted);font-size:12px}
 .rptable.stores tbody tr{cursor:pointer}.rptable.stores tbody tr:hover td{background:rgb(255 255 255 / .03)}
 .rptext{white-space:pre-wrap;font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--panel-solid);border:1px solid var(--line);border-radius:var(--r-md);padding:14px;margin:0;color:#ddd6f5;user-select:text;-webkit-user-select:text;overflow-wrap:anywhere}
+
+/* phone showing the desktop site: draw the app at phone size */
+html.phone #mapUi,html.phone #page,html.phone #tabbar,html.phone #sheetHost,html.phone #toastHost,html.phone #guide{zoom:var(--k)}
+html.phone #map{position:fixed;left:0;top:0;right:auto;bottom:auto;width:calc(100vw / var(--k));height:calc(100vh / var(--k));transform:scale(var(--k));transform-origin:0 0}
+html.phone .grid2{grid-template-columns:1fr}
+html.phone .glance .gl-row{grid-template-columns:70px minmax(0,1fr)}
+html.phone .gl-a{grid-column:2}

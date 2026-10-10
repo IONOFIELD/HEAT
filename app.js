@@ -1,5 +1,5 @@
 "use strict";
-const APP_V="20261010042006";
+const APP_V="20261010052247";
 /* Self-update: GitHub Pages caches the page for ~10 min; if a newer build is live, reload into it once. */
 (async()=>{ try{ const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"}); const j=await r.json(); if(j.v && j.v!==APP_V && sessionStorage.getItem("henrys.upd")!==j.v){ sessionStorage.setItem("henrys.upd",j.v); location.replace(location.pathname+"?u="+j.v); } }catch{} })();
 /* =========================================================================
@@ -179,7 +179,8 @@ async function initMap(){
   let style="https://tiles.openfreemap.org/styles/positron";
   try { const r=await fetch(style); style=recolor(await r.json()); } catch { /* fall back to stock style */ }
   const cam = ui.camera;
-  map = new maplibregl.Map({container:"map", style, center: [-122.436,37.759], zoom: 12, attributionControl:{compact:true}, maxPitch:0, dragRotate:false, pitchWithRotate:false});
+  map = new maplibregl.Map({container:"map", style, center: [-122.436,37.759], zoom: 12, attributionControl:{compact:true}, pixelRatio:Math.min(4,(window.devicePixelRatio||1)*(window.UI_K||1)), maxPitch:0, dragRotate:false, pitchWithRotate:false});
+  addEventListener("resize",()=>{ if(!map) return; try{ map.setPixelRatio(Math.min(4,(window.devicePixelRatio||1)*(window.UI_K||1))); }catch{} map.resize(); });
   map.touchZoomRotate.disableRotation();
   map.on("moveend", remember);
   map.on("load", ()=>{
@@ -229,9 +230,10 @@ function updateMapData(){
   map.getSource("ghosts").setData({type:"FeatureCollection",features:ghosts.filter(g=>!onList(g)).map(g=>({type:"Feature",properties:{osm:g.osm,name:g.name},geometry:{type:"Point",coordinates:[g.lon,g.lat]}}))});
   map.getSource("me").setData({type:"FeatureCollection",features:me?[{type:"Feature",properties:{},geometry:{type:"Point",coordinates:[me.lon,me.lat]}}]:[]});
 }
-const isWide = () => matchMedia("(min-width:900px)").matches;
-function flyTo(lon,lat,zoom=15){ if(!map) return; map.flyTo({center:[lon,lat],zoom:Math.max(map.getZoom(),zoom),padding: isWide()?{right:460}:{bottom:Math.round(innerHeight*.45)},duration:900}); }
-function fitZone(z){ map.fitBounds(z.bbox,{padding: isWide()?{top:60,bottom:60,left:60,right:480}:{top:120,bottom:Math.round(innerHeight*.5),left:30,right:30},duration:800}); }
+const isWide = () => matchMedia("(min-width:900px)").matches && !(window.UI_K>1);
+const viewH = () => innerHeight/(window.UI_K||1);
+function flyTo(lon,lat,zoom=15){ if(!map) return; map.flyTo({center:[lon,lat],zoom:Math.max(map.getZoom(),zoom),padding: isWide()?{right:460}:{bottom:Math.round(viewH()*.45)},duration:900}); }
+function fitZone(z){ map.fitBounds(z.bbox,{padding: isWide()?{top:60,bottom:60,left:60,right:480}:{top:120,bottom:Math.round(viewH()*.5),left:30,right:30},duration:800}); }
 function onList(g){ return shops.some(c=>(c.osm&&c.osm===g.osm) || (c.lat!=null && miles(c,g)<0.03)); }
 
 /* ---------- locate ---------- */
