@@ -98,7 +98,16 @@
       ctx.fillStyle="hsl(255,30%,19%)"; ctx.beginPath(); ctx.moveTo(o+3300,0); ctx.lineTo(o+3300,-640); ctx.quadraticCurveTo(o+3355,-740,o+3410,-640); ctx.lineTo(o+3410,0); ctx.fill();  // Salesforce
       ctx.fillStyle=`hsla(${(hue0+t/40)%360},90%,70%,.75)`; ctx.fillRect(o+3304,-690,102,22);   // its light crown
       // Bay Bridge
-      ctx.strokeStyle=sil; ctx.fillStyle=sil; ctx.fillRect(o+3800,-118,2500,10);
+      ctx.strokeStyle=sil; ctx.fillStyle=sil;
+      // west end lands in the city: the deck runs out of SoMa onto the Rincon Hill anchorage
+      ctx.fillRect(o+3420,-150,420,150);                       // low SoMa blocks under the approach
+      ctx.beginPath(); ctx.moveTo(o+3700,0); ctx.lineTo(o+3730,-160); ctx.lineTo(o+3880,-160); ctx.lineTo(o+3910,0); ctx.fill();   // anchorage
+      ctx.fillRect(o+3360,-118,2950,10);                       // deck, from the city to the east shore
+      // east end comes down onto the Oakland shore
+      ctx.beginPath(); ctx.moveTo(o+6300,-118); ctx.lineTo(o+6700,-6); ctx.lineTo(o+6700,4); ctx.lineTo(o+6300,-108); ctx.fill();
+      [6400,6520,6620].forEach(x=>ctx.fillRect(o+x-5,-118+(x-6300)*.28,10,118-(x-6300)*.28));
+      // Golden Gate's south end sits on the Presidio anchorage
+      ctx.beginPath(); ctx.moveTo(o+1760,0); ctx.lineTo(o+1785,-146); ctx.lineTo(o+1880,-146); ctx.lineTo(o+1920,0); ctx.fill();
       [o+4250,o+5000,o+5750].forEach(x=>{ ctx.fillRect(x-8,-380,16,380); });
       ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(o+3850,-115); [o+4250,o+5000,o+5750].forEach((x,i,a)=>{ ctx.quadraticCurveTo(x-(i?375:200),-140,x,-378); }); ctx.quadraticCurveTo(o+6000,-140,o+6250,-115); ctx.stroke();
       ctx.fillStyle="#fff"; for(let x=o+3850;x<o+6250;x+=70){ const d=Math.min(...[o+4250,o+5000,o+5750].map(c=>Math.abs(x-c))); const y=-115-Math.max(0,263*(1-d/375)**2); ctx.beginPath(); ctx.arc(x,y,3.2,0,TAU); ctx.fill(); }

@@ -1,9 +1,9 @@
 "use strict";
-const APP_V="20261010054146";
+const APP_V="20261010060752";
 /* Self-update: GitHub Pages caches the page for ~10 min; if a newer build is live, reload into it once. */
 (async()=>{ try{ const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"}); const j=await r.json(); if(j.v && j.v!==APP_V && sessionStorage.getItem("henrys.upd")!==j.v){ sessionStorage.setItem("henrys.upd",j.v); location.replace(location.pathname+"?u="+j.v); } }catch{} })();
 /* =========================================================================
-   Tony's World — field sales map for a Henry's rep
+   HEAT — field sales map for a Henry's rep
    Map: MapLibre GL + OpenFreeMap vector tiles (© OpenStreetMap contributors)
    Search: Photon (komoot) · Nearby finder: Overpass API · Zones: county lines
    Storage: this device (localStorage). Swap Store for Supabase later.
