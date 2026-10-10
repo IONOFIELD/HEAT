@@ -276,7 +276,7 @@
       if(!still) raf=requestAnimationFrame(frame);
     }
     const DEMO_LV={"San Francisco":"g","San Mateo":"g","Santa Cruz":"g","Alameda":"y","Sonoma":"y","Marin":"y","Contra Costa":"r","Solano":"r","Santa Clara":"n","Napa":"n","Lake":"n"};
-    const DEMO_COL={g:"#2f9e63",y:"#c9a227",r:"#c2415b",n:"#6b6590"}, DEMO_DOT={g:"#4ade80",y:"#facc15",r:"#fb7185",n:"#d6d1ee"};
+    const DEMO_COL={g:"#4ade80",y:"#facc15",r:"#fb7185",n:"#b9b3d6"}, DEMO_DOT={g:"#4ade80",y:"#facc15",r:"#fb7185",n:"#d6d1ee"};
     function inRing(lo,la,ring){ let c=false; for(let i=0,j=ring.length-1;i<ring.length;j=i++){ const [xi,yi]=ring[i],[xj,yj]=ring[j]; if(((yi>la)!==(yj>la)) && lo<(xj-xi)*(la-yi)/(yj-yi)+xi) c=!c; } return c; }
     const ZN=new Map(); function zoneName(lo,la){ const k=lo+","+la; if(ZN.has(k)) return ZN.get(k); let n=null; (window.ZONES?.features||[]).some(f=>{ const P=f.geometry.type==="Polygon"?[f.geometry.coordinates]:f.geometry.coordinates; if(P.some(p=>inRing(lo,la,p[0]))){ n=f.properties.name; return true; } return false; }); ZN.set(k,n); return n; }
     function globe(t,cw,ch){
@@ -295,12 +295,12 @@
       if(bA>0){ ctx.globalAlpha=bA; land(E.bay,"#3f8f6c");
         const zc=sm(3.3,3.7,Z)*(1-sm(4.3,4.6,Z)); if(zc>0 && window.ZONES){   // color each county the way the app does
           ctx.save(); ctx.beginPath(); E.bay.forEach(r=>{ r.forEach(([lo,la],i)=>{ const [x,y]=proj(lo,la,Rg); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.closePath(); }); ctx.clip("evenodd");
-          ctx.globalAlpha=zc; ctx.fillStyle="#2d2950"; ctx.fillRect(-cw,-ch,cw*2,ch*2);   // land outside the territory goes quiet
-          ctx.globalAlpha=zc*.82; window.ZONES.features.forEach(f=>{ ctx.fillStyle=DEMO_COL[DEMO_LV[f.properties.name]||"n"]; const P=f.geometry.type==="Polygon"?[f.geometry.coordinates]:f.geometry.coordinates;
+          // land stays green; each county gets a faint sheen of its stores' color
+          ctx.globalAlpha=zc*.24; window.ZONES.features.forEach(f=>{ ctx.fillStyle=DEMO_COL[DEMO_LV[f.properties.name]||"n"]; const P=f.geometry.type==="Polygon"?[f.geometry.coordinates]:f.geometry.coordinates;
             ctx.beginPath(); P.forEach(p=>p.forEach(ring=>{ ring.forEach(([lo,la],i)=>{ const [x,y]=proj(lo,la,Rg); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.closePath(); })); ctx.fill("evenodd"); });
           ctx.restore(); ctx.globalAlpha=bA; }
         const zl=sm(3.4,3.8,Z)*(1-sm(4.3,4.6,Z)); if(zl>0 && window.ZONES){ ctx.globalAlpha=zl*.5; ctx.strokeStyle="#c4b5fd"; ctx.lineWidth=1; window.ZONES.features.forEach(f=>{ const P=f.geometry.type==="Polygon"?[f.geometry.coordinates]:f.geometry.coordinates; P.forEach(p=>{ ctx.beginPath(); p[0].forEach(([lo,la],i)=>{ const [x,y]=proj(lo,la,Rg); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke(); }); }); }
-        const sd=sm(3.3,3.8,Z)*(1-sm(4.4,4.8,Z)); if(sd>0 && window.HENRYS_RETAILERS){ ctx.globalAlpha=sd; window.HENRYS_RETAILERS.forEach(r=>{ const [x,y,v]=proj(r.lon,r.lat,Rg); if(!v) return; ctx.fillStyle=DEMO_DOT[DEMO_LV[zoneName(r.lon,r.lat)]||"n"]; ctx.beginPath(); ctx.arc(x,y,Math.max(1.6,cw/180),0,TAU); ctx.fill(); }); } }
+        const sd=sm(3.3,3.8,Z)*(1-sm(4.4,4.8,Z)); if(sd>0 && window.HENRYS_RETAILERS){ ctx.globalAlpha=sd; window.HENRYS_RETAILERS.forEach(r=>{ const [x,y,v]=proj(r.lon,r.lat,Rg); if(!v) return; ctx.fillStyle=DEMO_DOT[DEMO_LV[zoneName(r.lon,r.lat)]||"n"]; ctx.beginPath(); ctx.arc(x,y,Math.max(2.2,cw/130),0,TAU); ctx.fill(); ctx.strokeStyle="rgba(255,255,255,.85)"; ctx.lineWidth=Math.max(1,cw/500); ctx.stroke(); }); } }
       ctx.globalAlpha=1;
       if(!big){ // night side + graticule
         const gr=sm(4.5,5,Z); if(gr>0){ ctx.globalAlpha=gr*.18; ctx.strokeStyle="#c9d6ff"; ctx.lineWidth=.6; for(let lo=-180;lo<180;lo+=30){ ctx.beginPath(); for(let la=-80;la<=80;la+=5){ const [x,y,v]=proj(lo,la,Rg); v?ctx.lineTo(x,y):ctx.moveTo(x,y);} ctx.stroke(); } for(let la=-60;la<=60;la+=30){ ctx.beginPath(); for(let lo=-180;lo<=180;lo+=5){ const [x,y,v]=proj(lo,la,Rg); v?ctx.lineTo(x,y):ctx.moveTo(x,y);} ctx.stroke(); } ctx.globalAlpha=1; }
