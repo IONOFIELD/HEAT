@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Henry's Territory</title>
+<meta name="theme-color" content="#0f0b1e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Henry's">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="styles.css?v=20261010041040">
+</head>
+<body>
+<div id="map" aria-label="Territory map"></div>
+
+<div id="mapUi">
+  <div class="topbar">
+    <div class="searchwrap glass">
+      <svg class="sicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="search" type="search" placeholder="Search your stores or add a new one" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="Search stores">
+      <button id="searchClear" class="iconbtn sm" hidden aria-label="Clear search">✕</button>
+      <button class="iconbtn sm helpbtn" data-guide="open" aria-label="How this app works">?</button>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="Color the map by"></div>
+    <div id="goalMini"></div>
+    <div id="results" class="results glass" hidden></div>
+  </div>
+  <div class="fabs">
+    <button class="fab glass" id="btnNearby" aria-label="Find dispensaries in this area" title="Find dispensaries in this area">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><path d="M12 7v6M9 10h6"/></svg>
+      <span>Find nearby</span>
+    </button>
+    <button class="fab glass round" id="btnLocate" aria-label="Show my location">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>
+    </button>
+  </div>
+</div>
+
+<main id="page" hidden></main>
+<nav class="tabbar glass" id="tabbar" aria-label="Sections"></nav>
+<div id="sheetHost"></div>
+<div id="toastHost" aria-live="polite"></div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="zones.js?v=20261010041040"></script>
+<script src="retailers.js?v=20261010041040"></script>
+<script src="earth.js?v=20261010041040"></script>
+<script src="unicorn.js?v=20261010041040"></script>
+<script src="app.js?v=20261010041040"></script>
+</body>
+</html>
