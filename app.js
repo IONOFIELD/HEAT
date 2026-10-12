@@ -1,5 +1,5 @@
 "use strict";
-const APP_V="20261011221606";
+const APP_V="20261011222243";
 /* Self-update: GitHub Pages caches the page for ~10 min; if a newer build is live, reload into it once. */
 (async()=>{ try{ const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"}); const j=await r.json(); if(j.v && j.v!==APP_V && sessionStorage.getItem("henrys.upd")!==j.v){ sessionStorage.setItem("henrys.upd",j.v); location.replace(location.pathname+"?u="+j.v); } }catch{} })();
 /* works with no signal: keep the app and the map on the phone */
@@ -583,7 +583,7 @@ function viewToday(){
   const hr=new Date().getHours(), greet=hr<12?"Good morning":hr<17?"Good afternoon":"Good evening";
   const sec=(t,s,arr,rf,empty)=>`<section class="section"><div class="section-head"><h2>${t}</h2><span class="sub" style="font-size:13px">${s}</span></div><div class="group">${arr.length?arr.map(c=>shopRow(c,"all",rf(c))).join(""):`<div class="empty">${empty}</div>`}</div></section>`;
   if(!shops.length) return head(`${greet}${repFirst()?", "+esc(repFirst()):""}`)+`<p class="sub">No stores yet. Head to the Map tab to add your first one.</p>`;
-  return head(`${greet}${repFirst()?", "+esc(repFirst()):""}`, `<p class="sub" style="margin:0">${new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})}</p>`)+routeCard()+backupCard()+momentumRow()+goalCard()+`
+  return head(`${greet}${repFirst()?", "+esc(repFirst()):""}`, `<p class="sub" style="margin:0">${new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})}</p>`)+goalCard()+routeCard()+momentumRow()+backupCard()+`
   <div class="stats">
     <div class="stat ${closing.length?"alert":""}"><b>${closing.length}</b><span>deals to close</span></div>
     <div class="stat ${due.length?"alert":""}"><b>${due.length}</b><span>follow-ups due</span></div>
@@ -936,10 +936,7 @@ function shopSheet(c){
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center"><span class="pill lv-${h.lv}">${SNAME[st]}</span>${c.tier?`<span class="tier ${c.tier}">Tier ${esc(c.tier)}</span>`:""}${c.house?`<span class="tag">${esc(c.house)} house</span>`:""}${c.preset?'<span class="tag">Carries Henry’s</span>':""}</div>
     <div class="stepper ${lost?"lost":""}">${STAGES.slice(0,7).map((s,i)=>`<i class="${i<=idx?"on":""}"></i>`).join("")}</div></div>${xBtn}</div>
   <div class="sheet-body">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      ${c.lat!=null?`<a class="btn violet" href="https://maps.apple.com/?daddr=${c.lat},${c.lon}&q=${encodeURIComponent(c.name)}" target="_blank" rel="noopener">Directions${d!=null?" · "+fmtMi(d):""}</a>`:`<button class="btn" data-act="edit">Add location</button>`}
-      ${bestPhone(c)?`<a class="btn" href="${telHref(bestPhone(c).num)}">Call ${esc(bestPhone(c).who)}</a>`:`<button class="btn" data-act="edit">Add phone</button>`}
-    </div>
+    ${actionRow(c)}
     ${glance(c)}
     <div class="blk lv-${h.lv}" style="border-left:3px solid var(--c)"><h2>Status</h2>
       <div class="reasons">${(h.detail||[{lv:h.lv,t:h.reasons[0]}]).map(r=>`<span class="pill lv-${r.lv}">${esc(r.t)}</span>`).join("")}</div>
@@ -1043,23 +1040,42 @@ function infoOf(c){ const L=c.linked||{}; const o={}; INFO_KEYS.forEach(k=>o[k]=
 const digits=p=>String(p||"").replace(/[^0-9+]/g,"");
 const telHref=p=>"tel:"+digits(p), smsHref=p=>"sms:"+digits(p);
 function bestPhone(c){ const i=infoOf(c); const b=i.contacts.find(x=>x.phone); if(b) return {num:b.phone, who:(b.name||b.role||"buyer").split(" ")[0]}; if(i.ownerPhone) return {num:i.ownerPhone,who:"owner"}; if(i.shopPhone) return {num:i.shopPhone,who:"store"}; return null; }
+const IC={
+  go:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg>',
+  call:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>',
+  text:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
+  mail:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+  web:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
+  copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>',
+  edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg>'};
+function actionRow(c){
+  const d=miles(me,c), i=infoOf(c), ph=bestPhone(c), email=i.shopEmail||i.ownerEmail||i.contacts.find(x=>x.email)?.email, web=i.website?(/^https?:/.test(i.website)?i.website:"https://"+i.website):null;
+  const b=(href,ic,label,sub,cls="",attr="")=>href?`<a class="act ${cls}" href="${esc(href)}" ${attr}>${IC[ic]}<span>${label}</span>${sub?`<small>${sub}</small>`:""}</a>`:`<button class="act" data-act="edit">${IC.edit}<span>Add</span><small>${label.toLowerCase()}</small></button>`;
+  return `<div class="acts">
+    ${b(c.lat!=null?`https://maps.apple.com/?daddr=${c.lat},${c.lon}&q=${encodeURIComponent(c.name)}`:null,"go","Directions",d!=null?fmtMi(d):"","primary",'target="_blank" rel="noopener"')}
+    ${b(ph?telHref(ph.num):null,"call","Call",ph?esc(ph.who):"")}
+    ${b(ph?smsHref(ph.num):null,"text","Text","")}
+    ${email?b("mailto:"+email,"mail","Email",""):b(web,"web","Website","","",'target="_blank" rel="noopener"')}
+  </div>`;
+}
 function glance(c){
   const i=infoOf(c), rows=[];
   const row=(l,v,a="")=>rows.push(`<div class="gl-row"><div class="gl-l">${l}</div><div class="gl-v">${v}</div><div class="gl-a">${a}</div></div>`);
-  const ph=n=>`<a class="chipbtn" href="${telHref(n)}">Call</a><a class="chipbtn" href="${smsHref(n)}">Text</a>`;
-  const em=e=>`<a class="chipbtn" href="mailto:${esc(e)}">Email</a><button class="chipbtn" data-copy="${esc(e)}">Copy</button>`;
+  const ph=n=>`<a class="icbtn" href="${smsHref(n)}" aria-label="Text">${IC.text}</a>`;
+  const em=e=>`<button class="icbtn" data-copy="${esc(e)}" aria-label="Copy">${IC.copy}</button>`;
+  const lk=(href,v,ext)=>`<a class="gl-link" href="${esc(href)}"${ext?' target="_blank" rel="noopener"':""}>${v}</a>`;
   const addr=[i.address,[i.city,i.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-  if(addr) row("Address",esc(addr), c.lat!=null?`<a class="chipbtn" href="https://maps.apple.com/?daddr=${c.lat},${c.lon}&q=${encodeURIComponent(c.name)}" target="_blank" rel="noopener">Go</a><button class="chipbtn" data-copy="${esc(addr)}">Copy</button>`:`<button class="chipbtn" data-copy="${esc(addr)}">Copy</button>`);
-  if(i.shopPhone) row("Front desk",`<span class="num">${esc(i.shopPhone)}</span>`,ph(i.shopPhone));
-  if(i.shopEmail) row("Shop email",esc(i.shopEmail),em(i.shopEmail));
+  if(addr) row("Address", c.lat!=null?lk(`https://maps.apple.com/?daddr=${c.lat},${c.lon}&q=${encodeURIComponent(c.name)}`,esc(addr),true):esc(addr), em(addr));
+  if(i.shopPhone) row("Front desk",lk(telHref(i.shopPhone),`<span class="num">${esc(i.shopPhone)}</span>`),ph(i.shopPhone));
+  if(i.shopEmail) row("Shop email",lk("mailto:"+i.shopEmail,esc(i.shopEmail)),em(i.shopEmail));
   if(i.ownerName||i.ownerPhone||i.ownerEmail){
     row("Owner",`<b>${esc(i.ownerName||"Owner")}</b>`);
-    if(i.ownerPhone) row("",`<span class="num">${esc(i.ownerPhone)}</span>`,ph(i.ownerPhone));
-    if(i.ownerEmail) row("",esc(i.ownerEmail),em(i.ownerEmail));
+    if(i.ownerPhone) row("",lk(telHref(i.ownerPhone),`<span class="num">${esc(i.ownerPhone)}</span>`),ph(i.ownerPhone));
+    if(i.ownerEmail) row("",lk("mailto:"+i.ownerEmail,esc(i.ownerEmail)),em(i.ownerEmail));
   }
-  i.contacts.forEach(x=>{ row(esc(x.role||"Contact"),`<b>${esc(x.name||"—")}</b>`); if(x.phone) row("",`<span class="num">${esc(x.phone)}</span>`,ph(x.phone)); if(x.email) row("",esc(x.email),em(x.email)); });
-  if(i.website){ const u=/^https?:/.test(i.website)?i.website:"https://"+i.website; row("Website",esc(i.website.replace(/^https?:\/\/(www\.)?/,"").replace(/\/$/,"")),`<a class="chipbtn" href="${esc(u)}" target="_blank" rel="noopener">Open</a>`); }
-  if(c.weedmaps) row("Menu","Weedmaps listing",`<a class="chipbtn" href="${esc(c.weedmaps)}" target="_blank" rel="noopener">Open</a>`);
+  i.contacts.forEach(x=>{ row(esc(x.role||"Contact"),`<b>${esc(x.name||"—")}</b>`); if(x.phone) row("",lk(telHref(x.phone),`<span class="num">${esc(x.phone)}</span>`),ph(x.phone)); if(x.email) row("",lk("mailto:"+x.email,esc(x.email)),em(x.email)); });
+  if(i.website){ const u=/^https?:/.test(i.website)?i.website:"https://"+i.website; row("Website",lk(u,esc(i.website.replace(/^https?:\/\/(www\.)?/,"").replace(/\/$/,"")),true)); }
+  if(c.weedmaps) row("Menu",lk(c.weedmaps,"Weedmaps listing",true));
   if(i.hours) row("Hours",esc(i.hours));
   if(i.license) row("License",`<span class="num">${esc(i.license)}</span>`);
   if(i.deliveryDays) row("Delivery",esc(i.deliveryDays));
