@@ -1,5 +1,5 @@
 "use strict";
-const APP_V="20261011220832";
+const APP_V="20261011221606";
 /* Self-update: GitHub Pages caches the page for ~10 min; if a newer build is live, reload into it once. */
 (async()=>{ try{ const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"}); const j=await r.json(); if(j.v && j.v!==APP_V && sessionStorage.getItem("henrys.upd")!==j.v){ sessionStorage.setItem("henrys.upd",j.v); location.replace(location.pathname+"?u="+j.v); } }catch{} })();
 /* works with no signal: keep the app and the map on the phone */
