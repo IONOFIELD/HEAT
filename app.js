@@ -1,5 +1,5 @@
 "use strict";
-const APP_V="20261010160033";
+const APP_V="20261011220710";
 /* Self-update: GitHub Pages caches the page for ~10 min; if a newer build is live, reload into it once. */
 (async()=>{ try{ const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"}); const j=await r.json(); if(j.v && j.v!==APP_V && sessionStorage.getItem("henrys.upd")!==j.v){ sessionStorage.setItem("henrys.upd",j.v); location.replace(location.pathname+"?u="+j.v); } }catch{} })();
 /* works with no signal: keep the app and the map on the phone */
@@ -48,7 +48,7 @@ const repInfo=()=>({...REP_DEFAULT,...(lsGet("henrys.rep")||{})});
 const repFirst=()=>(repInfo().name||"").trim().split(/\s+/)[0]||"";
 const repWho=(w="from")=>repFirst()?`it's ${repFirst()} ${w} Henry's`:`it's your rep ${w} Henry's`;
 const routeLabel=()=>repFirst()?`${esc(repFirst())}’s route`:"Your route";
-const COLORS = {g:"#4ade80", y:"#facc15", r:"#fb7185", n:"#8b84ad"};
+const COLORS = {g:"#5bd69a", y:"#f2c14e", r:"#f2708a", n:"#8f88a8"};
 const BAY_BBOX = [-123.6, 36.85, -121.2, 38.9];
 const SF_BOUNDS = [[-122.515,37.707],[-122.357,37.811]];   // San Francisco proper: default view
 
@@ -152,30 +152,30 @@ let map=null, mapReady=false;
 function recolor(style){
   for(const L of style.layers){
     const id=L.id; const p=L.paint=L.paint||{};
-    if(L.type==="background") p["background-color"]="#140f27";
+    if(L.type==="background") p["background-color"]="#110d1b";
     else if(L.type==="fill"){
       delete p["fill-pattern"];
-      if(/water/.test(id)) p["fill-color"]="#1e1949";
-      else if(/park|wood|grass/.test(id)){ p["fill-color"]="#16272a"; p["fill-opacity"]=0.75; }
-      else if(/building/.test(id)){ p["fill-color"]="#251d44"; p["fill-outline-color"]="#33295c"; p["fill-opacity"]=1; }
+      if(/water/.test(id)) p["fill-color"]="#191533";
+      else if(/park|wood|grass/.test(id)){ p["fill-color"]="#13201e"; p["fill-opacity"]=0.7; }
+      else if(/building/.test(id)){ p["fill-color"]="#1c1730"; p["fill-outline-color"]="#251f3c"; p["fill-opacity"]=1; }
       else if(/ice|glacier/.test(id)) p["fill-color"]="#1c1838";
-      else if(/residential/.test(id)) { p["fill-color"]="#19132f"; p["fill-opacity"]=1; }
-      else p["fill-color"]="#1b1534";
+      else if(/residential/.test(id)) { p["fill-color"]="#141020"; p["fill-opacity"]=1; }
+      else p["fill-color"]="#161225";
     } else if(L.type==="line"){
       delete p["line-pattern"];
-      let c="#3a2f68";
-      if(/water/.test(id)) c="#1e1949";
-      else if(/motorway/.test(id)) c=/casing/.test(id)?"#140f27":/subtle/.test(id)?"#7a4a26":"#d1813f";
-      else if(/major/.test(id)) c=/casing/.test(id)?"#140f27":/subtle/.test(id)?"#3b306b":"#6a58b5";
-      else if(/minor|pier/.test(id)) c="#372c63";
-      else if(/path/.test(id)) c="#2c2452";
-      else if(/rail/.test(id)) c="#3d3560";
-      else if(/boundary/.test(id)) c="#6a5fa6";
+      let c="#2a2440";
+      if(/water/.test(id)) c="#191533";
+      else if(/motorway/.test(id)) c=/casing/.test(id)?"#110d1b":/subtle/.test(id)?"#5a4636":"#a98466";
+      else if(/major/.test(id)) c=/casing/.test(id)?"#110d1b":/subtle/.test(id)?"#2f2850":"#544a86";
+      else if(/minor|pier/.test(id)) c="#2b2545";
+      else if(/path/.test(id)) c="#221d38";
+      else if(/rail/.test(id)) c="#2e2848";
+      else if(/boundary/.test(id)) c="#4d4580";
       else if(/aeroway/.test(id)) c="#2b2349";
       p["line-color"]=c;
     } else if(L.type==="symbol" && !/shield/.test(id)){
-      p["text-halo-color"]="#140f27"; p["text-halo-width"]=1.4;
-      p["text-color"] = /water/.test(id) ? "#8d86d9" : /highway|road/.test(id) ? "#bdb3ea" : "#efeaff";
+      p["text-halo-color"]="#110d1b"; p["text-halo-width"]=1.4;
+      p["text-color"] = /water/.test(id) ? "#7b74b0" : /highway|road/.test(id) ? "#a9a2c4" : "#e6e1f4";
     }
   }
   return style;
@@ -385,7 +385,7 @@ function renderWelcome(){
   w.innerHTML=`<div class="eyebrow"><b>Henry’s</b> · ${routeLabel()}</div><h1>Build your route</h1><p>Search a dispensary by name or address up top, or tap <b>Find nearby</b> to see every dispensary in view and add the ones you cover. Stores turn green, yellow, or red as you log visits and deals.</p>
   <div class="row2"><button class="btn primary" data-act="focus-search">Add a store</button>${lsGet(UNDO_KEY)?`<button class="btn violet" data-act="undo">Restore cleared stores</button>`:""}${missingRetailers().length?`<button class="btn" data-act="add-retailers">Load Henry’s stores (${missingRetailers().length})</button>`:""}</div>`;
 }
-function head(title, extra=""){ return `<div class="eyebrow"><b>Henry’s</b> · ${routeLabel()}</div><h1>${title}</h1>${extra}`; }
+function head(title, extra=""){ return `<h1>${title}</h1>${extra}`; }
 function shopRow(c, catKey="all", right=""){
   const h=health(c,catKey); const d=miles(me,c);
   return `<button class="row lv-${h.lv}" data-open="${c.id}"><span class="dot"></span><span class="t"><b>${esc(c.name)} ${c.tier?`<span class="tier ${c.tier}">${esc(c.tier)}</span>`:""}</b><small>${esc(h.reasons[0])}${h.reasons.length>1?` · +${h.reasons.length-1}`:""}</small></span><span class="rt">${right || [esc(infoOf(c).city||""), d!=null?fmtMi(d):""].filter(Boolean).join("<br>")}</span></button>`;
@@ -608,7 +608,7 @@ function viewPipeline(){
     return `<section class="stage ${hot?"hot":""}"><div class="stage-h"><h3>${l}</h3><span class="num">${arr.length}${tot?` · ${money(tot)}`:""}${k==="new"?` · <button class="linkbtn" data-pipe="new">Hide</button>`:""}</span></div>
       <div class="stage-list">${arr.map(c=>{const h=health(c);const t=dealTotal(c.deal?.items);return `<button class="card lv-${h.lv}" data-open="${c.id}"><b>${esc(c.name)}</b><small class="num">${esc(infoOf(c).city||"")} · in stage ${ago(daysSince(c.stageAt)).replace(" ago","")}${t?` · ${money(t)}`:""}</small>${h.lv!=="g"&&h.lv!=="n"?`<small style="color:var(--fg)">${esc(h.reasons[0])}</small>`:""}</button>`;}).join("")}</div></section>`; }).join("");
   const open=shops.filter(c=>["negotiating","verbal","confirmed"].includes(c.stage)).reduce((t,c)=>t+dealTotal(c.deal?.items),0);
-  return head("Deal pipeline", `<p class="sub" style="margin:4px 0 14px">${open?`<b style="color:var(--fg)">${money(open)}</b> in open deals. `:""}Deals leak between <b>Verbal yes</b> and <b>Ordered</b>: a verbal yes turns red after 2 days with no confirmation email, a confirmed deal after 4 days with no order.</p>`)+nextUpCard()+`<div class="board">${secs}</div>`;
+  return head("Pipeline", `<p class="sub" style="margin:4px 0 14px">${open?`<b style="color:var(--fg)">${money(open)}</b> in open deals. `:""}Close the yeses before they go cold.</p>`)+nextUpCard()+`<div class="board">${secs}</div>`;
 }
 
 function viewStores(){
@@ -933,7 +933,7 @@ function shopSheet(c){
   const curLine=(LINE[draft.line]&&!LINE[draft.line].off)?draft.line:CATALOG[0].id, strains=LINE[curLine].strains, curStrain=strains.includes(draft.strain)?draft.strain:strains[0], pf=priceFor(c,curLine,curStrain), price=draft.price??pf.price;
   const d=miles(me,c);
   return `<div class="sheet-head"><div style="min-width:0"><div class="eyebrow">${esc([c.city, zoneLabel(c.zone)].filter((x,i,a)=>x && a.indexOf(x)===i && !(i===1 && zoneLabel(c.zone).split(" · ").pop()===c.city)).join(" · "))}</div><h1>${esc(c.name)}</h1>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center"><span class="pill lv-${h.lv}">${SNAME[st]}</span>${c.tier?`<span class="tier ${c.tier}">Tier ${esc(c.tier)}</span>`:""}${c.house?`<span class="tag">${esc(c.house)} house</span>`:""}${c.preset?'<span class="tag" style="color:var(--pumpkin);border-color:rgb(255 154 60 / .45)">Carries Henry’s</span>':""}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center"><span class="pill lv-${h.lv}">${SNAME[st]}</span>${c.tier?`<span class="tier ${c.tier}">Tier ${esc(c.tier)}</span>`:""}${c.house?`<span class="tag">${esc(c.house)} house</span>`:""}${c.preset?'<span class="tag">Carries Henry’s</span>':""}</div>
     <div class="stepper ${lost?"lost":""}">${STAGES.slice(0,7).map((s,i)=>`<i class="${i<=idx?"on":""}"></i>`).join("")}</div></div>${xBtn}</div>
   <div class="sheet-body">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
